@@ -10,6 +10,9 @@
         "aarch64-apple-darwin",
         "aarch64-unknown-linux-gnu"
       ]
+    },
+    "package": {
+      "name": "@image-rs/target"
     }
   },
   "license": "MIT",
@@ -26,7 +29,7 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "build": "napi build --platform --release --js-package-name @image-rs/target-target",
+    "build": "napi build --platform --release --js-package-name @image-rs/target",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",

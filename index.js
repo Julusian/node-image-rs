@@ -31,7 +31,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.android-arm64.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-android-arm64')
+            nativeBinding = require('@image-rs/target-android-arm64')
           }
         } catch (e) {
           loadError = e
@@ -43,7 +43,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.android-arm-eabi.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-android-arm-eabi')
+            nativeBinding = require('@image-rs/target-android-arm-eabi')
           }
         } catch (e) {
           loadError = e
@@ -63,7 +63,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.win32-x64-msvc.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-win32-x64-msvc')
+            nativeBinding = require('@image-rs/target-win32-x64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -77,7 +77,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.win32-ia32-msvc.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-win32-ia32-msvc')
+            nativeBinding = require('@image-rs/target-win32-ia32-msvc')
           }
         } catch (e) {
           loadError = e
@@ -91,7 +91,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.win32-arm64-msvc.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-win32-arm64-msvc')
+            nativeBinding = require('@image-rs/target-win32-arm64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -107,7 +107,7 @@ switch (platform) {
       if (localFileExisted) {
         nativeBinding = require('./image-tools-rs.darwin-universal.node')
       } else {
-        nativeBinding = require('@image-rs/target-target-darwin-universal')
+        nativeBinding = require('@image-rs/target-darwin-universal')
       }
       break
     } catch {}
@@ -118,7 +118,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.darwin-x64.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-darwin-x64')
+            nativeBinding = require('@image-rs/target-darwin-x64')
           }
         } catch (e) {
           loadError = e
@@ -132,7 +132,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.darwin-arm64.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-darwin-arm64')
+            nativeBinding = require('@image-rs/target-darwin-arm64')
           }
         } catch (e) {
           loadError = e
@@ -151,7 +151,7 @@ switch (platform) {
       if (localFileExisted) {
         nativeBinding = require('./image-tools-rs.freebsd-x64.node')
       } else {
-        nativeBinding = require('@image-rs/target-target-freebsd-x64')
+        nativeBinding = require('@image-rs/target-freebsd-x64')
       }
     } catch (e) {
       loadError = e
@@ -168,7 +168,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./image-tools-rs.linux-x64-musl.node')
             } else {
-              nativeBinding = require('@image-rs/target-target-linux-x64-musl')
+              nativeBinding = require('@image-rs/target-linux-x64-musl')
             }
           } catch (e) {
             loadError = e
@@ -181,7 +181,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./image-tools-rs.linux-x64-gnu.node')
             } else {
-              nativeBinding = require('@image-rs/target-target-linux-x64-gnu')
+              nativeBinding = require('@image-rs/target-linux-x64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -197,7 +197,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./image-tools-rs.linux-arm64-musl.node')
             } else {
-              nativeBinding = require('@image-rs/target-target-linux-arm64-musl')
+              nativeBinding = require('@image-rs/target-linux-arm64-musl')
             }
           } catch (e) {
             loadError = e
@@ -210,7 +210,7 @@ switch (platform) {
             if (localFileExisted) {
               nativeBinding = require('./image-tools-rs.linux-arm64-gnu.node')
             } else {
-              nativeBinding = require('@image-rs/target-target-linux-arm64-gnu')
+              nativeBinding = require('@image-rs/target-linux-arm64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -225,7 +225,7 @@ switch (platform) {
           if (localFileExisted) {
             nativeBinding = require('./image-tools-rs.linux-arm-gnueabihf.node')
           } else {
-            nativeBinding = require('@image-rs/target-target-linux-arm-gnueabihf')
+            nativeBinding = require('@image-rs/target-linux-arm-gnueabihf')
           }
         } catch (e) {
           loadError = e
