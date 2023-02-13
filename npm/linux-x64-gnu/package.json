@@ -1,5 +1,5 @@
 {
-  "name": "image-tools-rs-linux-x64-gnu",
+  "name": ""@image-tools/node-linux-x64-gnu",
   "version": "0.0.0",
   "os": [
     "linux"

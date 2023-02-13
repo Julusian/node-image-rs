@@ -1,5 +1,5 @@
 {
-  "name": "image-tools-rs",
+  "name": "@image-tools/node",
   "version": "0.0.0",
   "main": "index.js",
   "types": "index.d.ts",
@@ -32,5 +32,12 @@
     "universal": "napi universal",
     "version": "napi version"
   },
-  "packageManager": "yarn@3.4.1"
+  "packageManager": "yarn@3.4.1",
+  "optionalDependencies": {
+    "@image-tools/node-win32-x64-msvc": "0.0.0",
+    "@image-tools/node-darwin-x64": "0.0.0",
+    "@image-tools/node-linux-x64-gnu": "0.0.0",
+    "@image-tools/node-darwin-arm64": "0.0.0",
+    "@image-tools/node-linux-arm64-gnu": "0.0.0"
+  }
 }

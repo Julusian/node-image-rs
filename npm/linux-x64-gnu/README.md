@@ -1,3 +1,3 @@
-# `image-tools-rs-linux-x64-gnu`
+# `"@image-tools/node-linux-x64-gnu`
 
 This is the **x86_64-unknown-linux-gnu** binary for `image-tools-rs`

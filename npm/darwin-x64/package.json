@@ -1,5 +1,5 @@
 {
-  "name": "image-tools-rs-darwin-x64",
+  "name": ""@image-tools/node-darwin-x64",
   "version": "0.0.0",
   "os": [
     "darwin"

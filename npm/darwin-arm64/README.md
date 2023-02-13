@@ -1,3 +1,3 @@
-# `image-tools-rs-darwin-arm64`
+# `"@image-tools/node-darwin-arm64`
 
 This is the **aarch64-apple-darwin** binary for `image-tools-rs`
