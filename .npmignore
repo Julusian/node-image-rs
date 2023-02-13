@@ -7,7 +7,9 @@ npm
 .prettierignore
 rustfmt.toml
 yarn.lock
-*.node
+/*.node
 .yarn
 __test__
 renovate.json
+.pretterrc.json
+.yarnrc.yml
