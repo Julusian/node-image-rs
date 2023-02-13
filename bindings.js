@@ -1,4 +1,5 @@
-const { readFileSync } = require('fs')
+const { existsSync, readFileSync } = require('fs')
+const { join } = require('path')
 
 const { platform, arch } = process
 
@@ -7,7 +8,17 @@ let loadError = null
 
 
 // Workaround to fix webpack's build warnings: 'the request of a dependency is an expression'
-const runtimeRequire = typeof __webpack_require__ === 'function' ? __non_webpack_require__ : require // eslint-disable-line
+const runtimeRequire0 = typeof __webpack_require__ === 'function' ? __non_webpack_require__ : require // eslint-disable-line
+
+function runtimeRequire(name) {
+  const candidates = [
+    join(__dirname, name),
+    join(__dirname, 'prebuilds', name)
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return runtimeRequire0(candidate)
+  }
+}
 
 function isMusl() {
   // For Node 10
@@ -29,14 +40,14 @@ switch (platform) {
     switch (arch) {
       case 'arm64':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.android-arm64.node')
+          nativeBinding = runtimeRequire('image-tools-rs.android-arm64.node')
         } catch (e) {
           loadError = e
         }
         break
       case 'arm':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.android-arm-eabi.node')
+          nativeBinding = runtimeRequire('image-tools-rs.android-arm-eabi.node')
         } catch (e) {
           loadError = e
         }
@@ -49,21 +60,21 @@ switch (platform) {
     switch (arch) {
       case 'x64':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.win32-x64-msvc.node')
+          nativeBinding = runtimeRequire('image-tools-rs.win32-x64-msvc.node')
         } catch (e) {
           loadError = e
         }
         break
       case 'ia32':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.win32-ia32-msvc.node')
+          nativeBinding = runtimeRequire('image-tools-rs.win32-ia32-msvc.node')
         } catch (e) {
           loadError = e
         }
         break
       case 'arm64':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.win32-arm64-msvc.node')
+          nativeBinding = runtimeRequire('image-tools-rs.win32-arm64-msvc.node')
         } catch (e) {
           loadError = e
         }
@@ -74,20 +85,20 @@ switch (platform) {
     break
   case 'darwin':
     try {
-      nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.darwin-universal.node')
+      nativeBinding = runtimeRequire('image-tools-rs.darwin-universal.node')
       break
     } catch {}
     switch (arch) {
       case 'x64':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.darwin-x64.node')
+          nativeBinding = runtimeRequire('image-tools-rs.darwin-x64.node')
         } catch (e) {
           loadError = e
         }
         break
       case 'arm64':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.darwin-arm64.node')
+          nativeBinding = runtimeRequire('image-tools-rs.darwin-arm64.node')
         } catch (e) {
           loadError = e
         }
@@ -101,7 +112,7 @@ switch (platform) {
       throw new Error(`Unsupported architecture on FreeBSD: ${arch}`)
     }
     try {
-      nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.freebsd-x64.node')
+      nativeBinding = runtimeRequire('image-tools-rs.freebsd-x64.node')
     } catch (e) {
       loadError = e
     }
@@ -111,13 +122,13 @@ switch (platform) {
       case 'x64':
         if (isMusl()) {
           try {
-            nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.linux-x64-musl.node')
+            nativeBinding = runtimeRequire('image-tools-rs.linux-x64-musl.node')
           } catch (e) {
             loadError = e
           }
         } else {
           try {
-            nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.linux-x64-gnu.node')
+            nativeBinding = runtimeRequire('image-tools-rs.linux-x64-gnu.node')
           } catch (e) {
             loadError = e
           }
@@ -126,13 +137,13 @@ switch (platform) {
       case 'arm64':
         if (isMusl()) {
           try {
-            nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.linux-arm64-musl.node')
+            nativeBinding = runtimeRequire('image-tools-rs.linux-arm64-musl.node')
           } catch (e) {
             loadError = e
           }
         } else {
           try {
-            nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.linux-arm64-gnu.node')
+            nativeBinding = runtimeRequire('image-tools-rs.linux-arm64-gnu.node')
           } catch (e) {
             loadError = e
           }
@@ -140,7 +151,7 @@ switch (platform) {
         break
       case 'arm':
         try {
-          nativeBinding = runtimeRequire('./prebuilds/image-tools-rs.linux-arm-gnueabihf.node')
+          nativeBinding = runtimeRequire('image-tools-rs.linux-arm-gnueabihf.node')
         } catch (e) {
           loadError = e
         }
