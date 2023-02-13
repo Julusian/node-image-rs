@@ -1,16 +1,46 @@
-import test from 'ava'
+import test from "ava";
 
-import { resize } from '../index.js'
-import { PixelFormat } from '../index.js'
-import { ResizeMode } from '../index.js'
+import { transform } from "../index.js";
+import { PixelFormat } from "../index.js";
+import { ResizeMode } from "../index.js";
 
 // test('sum from native', (t) => {
 //   t.is(sum(1, 2), 3)
 // })
 
-console.log(PixelFormat, ResizeMode)
+// console.log(PixelFormat, ResizeMode)
 
-test('aaa', (t) => {
-  t.notThrows(() => resize(72, 72, Buffer.alloc(72*72*4), 10, 10))
-  t.throws(() => resize(72, 72, Buffer.alloc(72*72*3), 10, 10))
-})
+test("crude test", (t) => {
+  t.notThrows(() =>
+    transform(
+      Buffer.alloc(72 * 72 * 4),
+      {
+        width: 72,
+        height: 72,
+        format: PixelFormat.Rgba,
+      },
+      {
+        width: 10,
+        height: 10,
+        format: PixelFormat.Rgba,
+      },
+      {}
+    )
+  );
+  t.throws(() =>
+    transform(
+      Buffer.alloc(72 * 72 * 3),
+      {
+        width: 72,
+        height: 72,
+        format: PixelFormat.Rgba,
+      },
+      {
+        width: 10,
+        height: 10,
+        format: PixelFormat.Rgba,
+      },
+      {}
+    )
+  );
+});
