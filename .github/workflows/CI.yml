@@ -245,9 +245,9 @@ jobs:
         with:
           path: artifacts
       - name: Move artifacts
-        run: yarn artifacts
-      - name: List packages
-        run: ls -R ./npm
+        run: |
+          mkdir prebuilds
+          mv artifacts/*/* prebuilds/
         shell: bash
       - name: Publish
         run: |
