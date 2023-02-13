@@ -5,29 +5,39 @@
 
 export const enum PixelFormat {
   Rgba = 0,
-  Rgb = 1
+  Rgb = 1,
 }
 export const enum ResizeMode {
   Exact = 0,
   Fill = 1,
-  Fit = 2
+  Fit = 2,
 }
 export interface ImageInfo {
-  format: PixelFormat
-  width: number
-  height: number
+  format: PixelFormat;
+  width: number;
+  height: number;
 }
 export const enum RotationMode {
   None = 0,
   CW90 = 1,
   CW180 = 2,
-  CW270 = 3
+  CW270 = 3,
 }
 export interface TransformOptions {
-  scaleMode?: ResizeMode
-  flipH?: boolean
-  flipV?: boolean
-  rotation?: RotationMode
+  scaleMode?: ResizeMode;
+  flipH?: boolean;
+  flipV?: boolean;
+  rotation?: RotationMode;
 }
-export function transform(sourceBuffer: Uint8Array, sourceInfo: ImageInfo, targetInfo: ImageInfo, options: TransformOptions): Uint8Array
-export function transformAsync(sourceBuffer: Uint8Array, sourceInfo: ImageInfo, targetInfo: ImageInfo, options: TransformOptions): Promise<unknown>
+export function transform(
+  sourceBuffer: Uint8Array,
+  sourceInfo: ImageInfo,
+  targetInfo: ImageInfo,
+  options: TransformOptions
+): Uint8Array;
+export function transformAsync(
+  sourceBuffer: Uint8Array,
+  sourceInfo: ImageInfo,
+  targetInfo: ImageInfo,
+  options: TransformOptions
+): Promise<unknown>;

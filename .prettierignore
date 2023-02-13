@@ -1,5 +1,4 @@
 package.json
-index.js
-index.d.ts
+bindings.d.ts
 .yarn/
 target

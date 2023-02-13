@@ -1,174 +1,197 @@
-const { existsSync, readFileSync } = require('fs')
-const { join } = require('path')
+const { existsSync, readFileSync } = require("fs");
+const { join } = require("path");
 
-const { platform, arch } = process
+const { platform, arch } = process;
 
-let nativeBinding = null
-let loadError = null
-
+let nativeBinding = null;
+let loadError = null;
 
 // Workaround to fix webpack's build warnings: 'the request of a dependency is an expression'
-const runtimeRequire0 = typeof __webpack_require__ === 'function' ? __non_webpack_require__ : require // eslint-disable-line
+const runtimeRequire0 =
+  typeof __webpack_require__ === "function" ? __non_webpack_require__ : require; // eslint-disable-line
 
 function runtimeRequire(name) {
   const candidates = [
     join(__dirname, name),
-    join(__dirname, 'prebuilds', name)
-  ]
+    join(__dirname, "prebuilds", name),
+  ];
   for (const candidate of candidates) {
-    if (existsSync(candidate)) return runtimeRequire0(candidate)
+    if (existsSync(candidate)) return runtimeRequire0(candidate);
   }
 }
 
 function isMusl() {
   // For Node 10
-  if (!process.report || typeof process.report.getReport !== 'function') {
+  if (!process.report || typeof process.report.getReport !== "function") {
     try {
-      const lddPath = require('child_process').execSync('which ldd').toString().trim();
-      return readFileSync(lddPath, 'utf8').includes('musl')
+      const lddPath = require("child_process")
+        .execSync("which ldd")
+        .toString()
+        .trim();
+      return readFileSync(lddPath, "utf8").includes("musl");
     } catch (e) {
-      return true
+      return true;
     }
   } else {
-    const { glibcVersionRuntime } = process.report.getReport().header
-    return !glibcVersionRuntime
+    const { glibcVersionRuntime } = process.report.getReport().header;
+    return !glibcVersionRuntime;
   }
 }
 
 switch (platform) {
-  case 'android':
+  case "android":
     switch (arch) {
-      case 'arm64':
+      case "arm64":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.android-arm64.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.android-arm64.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
-      case 'arm':
+        break;
+      case "arm":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.android-arm-eabi.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.android-arm-eabi.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
+        break;
       default:
-        throw new Error(`Unsupported architecture on Android ${arch}`)
+        throw new Error(`Unsupported architecture on Android ${arch}`);
     }
-    break
-  case 'win32':
+    break;
+  case "win32":
     switch (arch) {
-      case 'x64':
+      case "x64":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.win32-x64-msvc.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.win32-x64-msvc.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
-      case 'ia32':
+        break;
+      case "ia32":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.win32-ia32-msvc.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.win32-ia32-msvc.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
-      case 'arm64':
+        break;
+      case "arm64":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.win32-arm64-msvc.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.win32-arm64-msvc.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
+        break;
       default:
-        throw new Error(`Unsupported architecture on Windows: ${arch}`)
+        throw new Error(`Unsupported architecture on Windows: ${arch}`);
     }
-    break
-  case 'darwin':
+    break;
+  case "darwin":
     try {
-      nativeBinding = runtimeRequire('image-tools-rs.darwin-universal.node')
-      break
+      nativeBinding = runtimeRequire("julusian-image-rs.darwin-universal.node");
+      break;
     } catch {}
     switch (arch) {
-      case 'x64':
+      case "x64":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.darwin-x64.node')
+          nativeBinding = runtimeRequire("julusian-image-rs.darwin-x64.node");
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
-      case 'arm64':
+        break;
+      case "arm64":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.darwin-arm64.node')
+          nativeBinding = runtimeRequire("julusian-image-rs.darwin-arm64.node");
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
+        break;
       default:
-        throw new Error(`Unsupported architecture on macOS: ${arch}`)
+        throw new Error(`Unsupported architecture on macOS: ${arch}`);
     }
-    break
-  case 'freebsd':
-    if (arch !== 'x64') {
-      throw new Error(`Unsupported architecture on FreeBSD: ${arch}`)
+    break;
+  case "freebsd":
+    if (arch !== "x64") {
+      throw new Error(`Unsupported architecture on FreeBSD: ${arch}`);
     }
     try {
-      nativeBinding = runtimeRequire('image-tools-rs.freebsd-x64.node')
+      nativeBinding = runtimeRequire("julusian-image-rs.freebsd-x64.node");
     } catch (e) {
-      loadError = e
+      loadError = e;
     }
-    break
-  case 'linux':
+    break;
+  case "linux":
     switch (arch) {
-      case 'x64':
+      case "x64":
         if (isMusl()) {
           try {
-            nativeBinding = runtimeRequire('image-tools-rs.linux-x64-musl.node')
+            nativeBinding = runtimeRequire(
+              "julusian-image-rs.linux-x64-musl.node"
+            );
           } catch (e) {
-            loadError = e
+            loadError = e;
           }
         } else {
           try {
-            nativeBinding = runtimeRequire('image-tools-rs.linux-x64-gnu.node')
+            nativeBinding = runtimeRequire(
+              "julusian-image-rs.linux-x64-gnu.node"
+            );
           } catch (e) {
-            loadError = e
+            loadError = e;
           }
         }
-        break
-      case 'arm64':
+        break;
+      case "arm64":
         if (isMusl()) {
           try {
-            nativeBinding = runtimeRequire('image-tools-rs.linux-arm64-musl.node')
+            nativeBinding = runtimeRequire(
+              "julusian-image-rs.linux-arm64-musl.node"
+            );
           } catch (e) {
-            loadError = e
+            loadError = e;
           }
         } else {
           try {
-            nativeBinding = runtimeRequire('image-tools-rs.linux-arm64-gnu.node')
+            nativeBinding = runtimeRequire(
+              "julusian-image-rs.linux-arm64-gnu.node"
+            );
           } catch (e) {
-            loadError = e
+            loadError = e;
           }
         }
-        break
-      case 'arm':
+        break;
+      case "arm":
         try {
-          nativeBinding = runtimeRequire('image-tools-rs.linux-arm-gnueabihf.node')
+          nativeBinding = runtimeRequire(
+            "julusian-image-rs.linux-arm-gnueabihf.node"
+          );
         } catch (e) {
-          loadError = e
+          loadError = e;
         }
-        break
+        break;
       default:
-        throw new Error(`Unsupported architecture on Linux: ${arch}`)
+        throw new Error(`Unsupported architecture on Linux: ${arch}`);
     }
-    break
+    break;
   default:
-    throw new Error(`Unsupported OS: ${platform}, architecture: ${arch}`)
+    throw new Error(`Unsupported OS: ${platform}, architecture: ${arch}`);
 }
 
 if (!nativeBinding) {
   if (loadError) {
-    throw loadError
+    throw loadError;
   }
-  throw new Error(`Failed to load native binding`)
+  throw new Error(`Failed to load native binding`);
 }
 
-module.exports = nativeBinding
+module.exports = nativeBinding;

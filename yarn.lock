@@ -12,9 +12,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@image-rs/node@workspace:.":
+"@julusian/image-rs@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@image-rs/node@workspace:."
+  resolution: "@julusian/image-rs@workspace:."
   dependencies:
     "@napi-rs/cli": ^2.14.7
     ava: ^5.1.1

@@ -1,18 +1,15 @@
 {
-  "name": "@image-rs/node",
+  "name": "@julusian/image-rs",
   "version": "0.0.7",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
-    "name": "image-tools-rs",
+    "name": "julusian-image-rs",
     "triples": {
       "additional": [
         "aarch64-apple-darwin",
         "aarch64-unknown-linux-gnu"
       ]
-    },
-    "package": {
-      "name": "@image-rs/target"
     }
   },
   "license": "MIT",
