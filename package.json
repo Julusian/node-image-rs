@@ -1,5 +1,5 @@
 {
-  "name": "@image-tools/node",
+  "name": "@image-rs/node",
   "version": "0.0.0",
   "main": "index.js",
   "types": "index.d.ts",
@@ -21,23 +21,16 @@
     "timeout": "3m"
   },
   "engines": {
-    "node": ">= 10"
+    "node": ">= 16"
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "build": "napi build --platform --release",
+    "build": "napi build --platform --release --js-package-name @image-rs/target-target",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
     "universal": "napi universal",
     "version": "napi version"
   },
-  "packageManager": "yarn@3.4.1",
-  "optionalDependencies": {
-    "@image-tools/node-win32-x64-msvc": "0.0.0",
-    "@image-tools/node-darwin-x64": "0.0.0",
-    "@image-tools/node-linux-x64-gnu": "0.0.0",
-    "@image-tools/node-darwin-arm64": "0.0.0",
-    "@image-tools/node-linux-arm64-gnu": "0.0.0"
-  }
+  "packageManager": "yarn@3.4.1"
 }

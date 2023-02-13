@@ -12,6 +12,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@image-rs/node@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@image-rs/node@workspace:."
+  dependencies:
+    "@napi-rs/cli": ^2.14.7
+    ava: ^5.1.1
+  languageName: unknown
+  linkType: soft
+
 "@napi-rs/cli@npm:^2.14.7":
   version: 2.14.7
   resolution: "@napi-rs/cli@npm:2.14.7"
@@ -948,15 +957,6 @@ __metadata:
   checksum: 3d4c309c6006e2621659311783eaea7ebcd41fe4ca1d78c91c473157ad6666a57a2df790fe0d07a12300d9aac2888204d7be8d59f9aaf665b1c7fcdb432517ef
   languageName: node
   linkType: hard
-
-"image-tools-rs@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "image-tools-rs@workspace:."
-  dependencies:
-    "@napi-rs/cli": ^2.14.7
-    ava: ^5.1.1
-  languageName: unknown
-  linkType: soft
 
 "imurmurhash@npm:^0.1.4":
   version: 0.1.4

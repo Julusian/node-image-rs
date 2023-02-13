@@ -1,3 +1,3 @@
-# `"@image-tools/node-darwin-x64`
+# `"@image-rs/target-darwin-x64`
 
-This is the **x86_64-apple-darwin** binary for `image-tools-rs`
+This is the **x86_64-apple-darwin** binary for `@image-rs/node`
