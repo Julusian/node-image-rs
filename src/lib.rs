@@ -36,7 +36,6 @@ pub struct ImageInfo {
 #[napi]
 #[derive(PartialEq)]
 pub enum RotationMode {
-  None,
   CW90,
   CW180,
   CW270,
@@ -50,41 +49,26 @@ pub struct TransformOptions {
   pub rotation: Option<RotationMode>,
 }
 
-fn load_image(source_buffer: &Uint8Array, source_info: &ImageInfo) -> Option<DynamicImage> {
-  match source_info.format {
-    PixelFormat::Rgba => RgbaImage::from_raw(
-      source_info.width,
-      source_info.height,
-      source_buffer.to_vec(),
-    )
-    .and_then(|img| Some(DynamicImage::from(img))),
+fn load_image(
+  source_buffer: &Uint8Array,
+  width: u32,
+  height: u32,
+  format: PixelFormat,
+) -> Option<DynamicImage> {
+  match format {
+    PixelFormat::Rgba => RgbaImage::from_raw(width, height, source_buffer.to_vec())
+      .and_then(|img| Some(DynamicImage::from(img))),
     // PixelFormat::Argb => todo!(),
-    PixelFormat::Rgb => RgbImage::from_raw(
-      source_info.width,
-      source_info.height,
-      source_buffer.to_vec(),
-    )
-    .and_then(|img| Some(DynamicImage::from(img))),
+    PixelFormat::Rgb => RgbImage::from_raw(width, height, source_buffer.to_vec())
+      .and_then(|img| Some(DynamicImage::from(img))),
   }
 }
 
-fn resize_image(img: &DynamicImage, target_info: &ImageInfo, mode: &ResizeMode) -> DynamicImage {
+fn resize_image(img: &DynamicImage, width: u32, height: u32, mode: &ResizeMode) -> DynamicImage {
   match mode {
-    ResizeMode::Exact => img.resize_exact(
-      target_info.width,
-      target_info.height,
-      image::imageops::FilterType::Lanczos3,
-    ),
-    ResizeMode::Fill => img.resize_to_fill(
-      target_info.width,
-      target_info.height,
-      image::imageops::FilterType::Lanczos3,
-    ),
-    ResizeMode::Fit => img.resize(
-      target_info.width,
-      target_info.height,
-      image::imageops::FilterType::Lanczos3,
-    ),
+    ResizeMode::Exact => img.resize_exact(width, height, image::imageops::FilterType::Lanczos3),
+    ResizeMode::Fill => img.resize_to_fill(width, height, image::imageops::FilterType::Lanczos3),
+    ResizeMode::Fit => img.resize(width, height, image::imageops::FilterType::Lanczos3),
   }
 }
 
@@ -93,17 +77,6 @@ fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
     PixelFormat::Rgba => img.into_rgba8().into_vec(),
     PixelFormat::Rgb => img.into_rgb8().into_vec(),
   }
-}
-
-fn validate(target_info: &ImageInfo) -> napi::Result<()> {
-  if target_info.width == 0 || target_info.height == 0 {
-    return Err(Error::new(
-      Status::GenericFailure,
-      "Invalid target dimensions",
-    ));
-  }
-
-  Ok(())
 }
 
 fn should_return_self(
@@ -124,61 +97,9 @@ fn should_return_self(
   }
 }
 
-#[napi]
-pub fn transform(
-  env: Env,
-  source_buffer: Uint8Array,
-  source_info: ImageInfo,
-  target_info: ImageInfo,
-  options: TransformOptions,
-) -> napi::Result<Uint8Array> {
-  validate(&target_info)?;
-
-  if should_return_self(&source_info, &target_info, &options) {
-    return Ok(source_buffer);
-  }
-
-  let mut task = AsyncTransform {
-    source_buffer,
-    source_info,
-    target_info,
-    options,
-  };
-
-  let output = task.compute()?;
-
-  task.resolve(env, output)
-}
-
-#[napi]
-pub fn transform_async(
-  source_buffer: Uint8Array,
-  source_info: ImageInfo,
-  target_info: ImageInfo,
-  options: TransformOptions,
-) -> napi::Result<AsyncTask<AsyncTransform>> {
-  validate(&target_info)?;
-
-  if should_return_self(&source_info, &target_info, &options) {
-    // return Ok(source_buffer);
-    // TODO
-  }
-
-  let task = AsyncTransform {
-    source_buffer,
-    source_info,
-    target_info,
-    options,
-  };
-
-  Ok(AsyncTask::new(task))
-}
-
 pub struct AsyncTransform {
-  source_buffer: Uint8Array,
-  source_info: ImageInfo,
-  target_info: ImageInfo,
-  options: TransformOptions,
+  spec: TransformSpec,
+  target_format: PixelFormat,
 }
 
 impl napi::Task for AsyncTransform {
@@ -186,37 +107,28 @@ impl napi::Task for AsyncTransform {
   type JsValue = Uint8Array;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let mut img = load_image(&self.source_buffer, &self.source_info)
-      .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"))?;
+    let mut img = load_image(
+      &self.spec.buffer,
+      self.spec.width,
+      self.spec.height,
+      self.spec.format,
+    )
+    .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"))?;
 
-    // Do resize
-    if self.source_info.width != self.target_info.width
-      || self.source_info.height != self.target_info.height
-    {
-      img = resize_image(
-        &img,
-        &self.target_info,
-        &self.options.scale_mode.unwrap_or(ResizeMode::Exact),
-      );
+    for op in self.spec.ops.iter() {
+      img = match op {
+        TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
+        TransformOps::FlipV => img.flipv(),
+        TransformOps::FlipH => img.fliph(),
+        TransformOps::Rotate(mode) => match mode {
+          RotationMode::CW90 => img.rotate90(),
+          RotationMode::CW180 => img.rotate180(),
+          RotationMode::CW270 => img.rotate270(),
+        },
+      };
     }
 
-    // Rotate
-    img = match self.options.rotation.unwrap_or(RotationMode::None) {
-      RotationMode::None => img,
-      RotationMode::CW90 => img.rotate90(),
-      RotationMode::CW180 => img.rotate180(),
-      RotationMode::CW270 => img.rotate270(),
-    };
-
-    // Do flips
-    if self.options.flip_h.unwrap_or(false) {
-      img = img.fliph();
-    }
-    if self.options.flip_v.unwrap_or(false) {
-      img = img.flipv();
-    }
-
-    let encoded = encode_image(img, &self.target_info.format);
+    let encoded = encode_image(img, &self.target_format);
 
     Ok(encoded)
   }
@@ -224,5 +136,113 @@ impl napi::Task for AsyncTransform {
   fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
     Ok(Uint8Array::from(output))
     // _env.create_uint32(99)
+  }
+}
+
+#[derive(Clone)]
+pub struct ScaleOp {
+  width: u32,
+  height: u32,
+  mode: ResizeMode,
+}
+
+#[derive(Clone)]
+pub enum TransformOps {
+  Scale(ScaleOp),
+  FlipV,
+  FlipH,
+  Rotate(RotationMode),
+}
+
+#[derive(Clone)]
+pub struct TransformSpec {
+  buffer: Uint8Array, // TODO - is this safe to Clone?
+  width: u32,
+  height: u32,
+  format: PixelFormat,
+
+  ops: Vec<TransformOps>,
+}
+
+#[napi]
+pub struct ImageTransformer {
+  transformer: TransformSpec,
+}
+#[napi]
+impl ImageTransformer {
+  #[napi(factory)]
+  pub fn from_buffer(buffer: Uint8Array, width: u32, height: u32, format: PixelFormat) -> Self {
+    ImageTransformer {
+      transformer: TransformSpec {
+        buffer,
+        width,
+        height,
+        format,
+        ops: Vec::new(),
+      },
+    }
+  }
+
+  #[napi]
+  pub fn scale(
+    &mut self,
+    width: u32,
+    height: u32,
+    mode: Option<ResizeMode>,
+  ) -> napi::Result<&Self> {
+    if width == 0 || height == 0 {
+      Err(Error::new(Status::GenericFailure, "Invalid dimensions"))
+    } else {
+      self.transformer.ops.push(TransformOps::Scale(ScaleOp {
+        width,
+        height,
+        mode: mode.unwrap_or(ResizeMode::Exact),
+      }));
+
+      Ok(self)
+    }
+  }
+
+  #[napi]
+  pub fn flip_vertical(&mut self) -> &Self {
+    self.transformer.ops.push(TransformOps::FlipV);
+
+    self
+  }
+
+  #[napi]
+  pub fn flip_horizontal(&mut self) -> &Self {
+    self.transformer.ops.push(TransformOps::FlipH);
+
+    self
+  }
+
+  #[napi]
+  pub fn rotate(&mut self, rotation: RotationMode) -> &Self {
+    self.transformer.ops.push(TransformOps::Rotate(rotation));
+
+    self
+  }
+
+  #[napi]
+  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<Uint8Array> {
+    let mut task = AsyncTransform {
+      spec: self.transformer.clone(),
+      target_format: format,
+    };
+
+    let output = task.compute()?;
+
+    task.resolve(env, output)
+  }
+
+  #[napi]
+  pub fn to_buffer(&self, format: PixelFormat) -> napi::Result<AsyncTask<AsyncTransform>> {
+    let task = AsyncTransform {
+      spec: self.transformer.clone(),
+      target_format: format,
+    };
+
+    Ok(AsyncTask::new(task))
   }
 }

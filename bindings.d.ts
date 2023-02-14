@@ -5,39 +5,35 @@
 
 export const enum PixelFormat {
   Rgba = 0,
-  Rgb = 1,
+  Rgb = 1
 }
 export const enum ResizeMode {
   Exact = 0,
   Fill = 1,
-  Fit = 2,
+  Fit = 2
 }
 export interface ImageInfo {
-  format: PixelFormat;
-  width: number;
-  height: number;
+  format: PixelFormat
+  width: number
+  height: number
 }
 export const enum RotationMode {
-  None = 0,
-  CW90 = 1,
-  CW180 = 2,
-  CW270 = 3,
+  CW90 = 0,
+  CW180 = 1,
+  CW270 = 2
 }
 export interface TransformOptions {
-  scaleMode?: ResizeMode;
-  flipH?: boolean;
-  flipV?: boolean;
-  rotation?: RotationMode;
+  scaleMode?: ResizeMode
+  flipH?: boolean
+  flipV?: boolean
+  rotation?: RotationMode
 }
-export function transform(
-  sourceBuffer: Uint8Array,
-  sourceInfo: ImageInfo,
-  targetInfo: ImageInfo,
-  options: TransformOptions
-): Uint8Array;
-export function transformAsync(
-  sourceBuffer: Uint8Array,
-  sourceInfo: ImageInfo,
-  targetInfo: ImageInfo,
-  options: TransformOptions
-): Promise<unknown>;
+export class ImageTransformer {
+  static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat): ImageTransformer
+  scale(width: number, height: number, mode?: ResizeMode | undefined | null): this
+  flipVertical(): this
+  flipHorizontal(): this
+  rotate(rotation: RotationMode): this
+  toBufferSync(format: PixelFormat): Uint8Array
+  toBuffer(format: PixelFormat): Promise<unknown>
+}
