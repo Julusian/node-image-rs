@@ -236,7 +236,7 @@ impl ImageTransformer {
     task.resolve(env, output)
   }
 
-  #[napi]
+  #[napi(ts_return_type = "Promise<Uint8Array>")]
   pub fn to_buffer(&self, format: PixelFormat) -> napi::Result<AsyncTask<AsyncTransform>> {
     let task = AsyncTransform {
       spec: self.transformer.clone(),
