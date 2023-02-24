@@ -99,7 +99,7 @@ switch (platform) {
   case "darwin":
     try {
       nativeBinding = runtimeRequire("julusian-image-rs.darwin-universal.node");
-      break;
+      if (nativeBinding) break;
     } catch {}
     switch (arch) {
       case "x64":
