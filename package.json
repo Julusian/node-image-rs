@@ -32,9 +32,7 @@
   "scripts": {
     "build": "napi build --platform --release --js-package-name @image-rs/target --js=false --dts bindings.d.ts",
     "build:debug": "napi build --platform",
-    "test": "ava",
-    "universal": "napi universal",
-    "version": "napi version"
+    "test": "ava"
   },
   "packageManager": "yarn@3.4.1"
 }
