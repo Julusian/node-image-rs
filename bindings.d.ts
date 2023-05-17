@@ -12,6 +12,18 @@ export const enum ResizeMode {
   Fill = 1,
   Fit = 2
 }
+export const enum ResizeAlgorithm {
+  /** Nearest Neighbor */
+  Nearest = 0,
+  /** Linear Filter */
+  Triangle = 1,
+  /** Cubic Filter */
+  CatmullRom = 2,
+  /** Gaussian Filter */
+  Gaussian = 3,
+  /** Lanczos with window 3 */
+  Lanczos3 = 4
+}
 export interface ImageInfo {
   format: PixelFormat
   width: number
@@ -30,10 +42,10 @@ export interface TransformOptions {
 }
 export class ImageTransformer {
   static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat): ImageTransformer
-  scale(width: number, height: number, mode?: ResizeMode | undefined | null): this
+  scale(width: number, height: number, mode?: ResizeMode | undefined | null, algorithm?: ResizeAlgorithm | undefined | null): this
   flipVertical(): this
   flipHorizontal(): this
   rotate(rotation: RotationMode): this
   toBufferSync(format: PixelFormat): Uint8Array
-  toBuffer(format: PixelFormat): Promise<unknown>
+  toBuffer(format: PixelFormat): Promise<Uint8Array>
 }

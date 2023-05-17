@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use image::{DynamicImage, RgbImage, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, RgbImage, RgbaImage};
 use napi::{
   bindgen_prelude::{AsyncTask, FromNapiValue, ToNapiValue, Uint8Array},
   Env, Error, Status, Task,
@@ -23,6 +23,25 @@ pub enum ResizeMode {
   Exact,
   Fill,
   Fit,
+}
+
+#[napi]
+#[derive(PartialEq)]
+pub enum ResizeAlgorithm {
+  /// Nearest Neighbor
+  Nearest,
+
+  /// Linear Filter
+  Triangle,
+
+  /// Cubic Filter
+  CatmullRom,
+
+  /// Gaussian Filter
+  Gaussian,
+
+  /// Lanczos with window 3
+  Lanczos3,
 }
 
 #[napi(object)]
@@ -63,11 +82,24 @@ fn load_image(
   }
 }
 
-fn resize_image(img: &DynamicImage, width: u32, height: u32, mode: &ResizeMode) -> DynamicImage {
+fn resize_image(
+  img: &DynamicImage,
+  width: u32,
+  height: u32,
+  mode: &ResizeMode,
+  algorithm: &ResizeAlgorithm,
+) -> DynamicImage {
+  let filter = match algorithm {
+    &ResizeAlgorithm::Nearest => FilterType::Nearest,
+    &ResizeAlgorithm::Triangle => FilterType::Triangle,
+    &ResizeAlgorithm::CatmullRom => FilterType::CatmullRom,
+    &ResizeAlgorithm::Gaussian => FilterType::Gaussian,
+    &ResizeAlgorithm::Lanczos3 => FilterType::Lanczos3,
+  };
   match mode {
-    ResizeMode::Exact => img.resize_exact(width, height, image::imageops::FilterType::Lanczos3),
-    ResizeMode::Fill => img.resize_to_fill(width, height, image::imageops::FilterType::Lanczos3),
-    ResizeMode::Fit => img.resize(width, height, image::imageops::FilterType::Lanczos3),
+    ResizeMode::Exact => img.resize_exact(width, height, filter),
+    ResizeMode::Fill => img.resize_to_fill(width, height, filter),
+    ResizeMode::Fit => img.resize(width, height, filter),
   }
 }
 
@@ -98,7 +130,7 @@ impl napi::Task for AsyncTransform {
 
     for op in self.spec.ops.iter() {
       img = match op {
-        TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
+        TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode, &op.algorithm),
         TransformOps::FlipV => img.flipv(),
         TransformOps::FlipH => img.fliph(),
         TransformOps::Rotate(mode) => match mode {
@@ -124,6 +156,7 @@ pub struct ScaleOp {
   width: u32,
   height: u32,
   mode: ResizeMode,
+  algorithm: ResizeAlgorithm,
 }
 
 #[derive(Clone)]
@@ -169,6 +202,7 @@ impl ImageTransformer {
     width: u32,
     height: u32,
     mode: Option<ResizeMode>,
+    algorithm: Option<ResizeAlgorithm>,
   ) -> napi::Result<&Self> {
     if width == 0 || height == 0 {
       Err(Error::new(Status::GenericFailure, "Invalid dimensions"))
@@ -177,6 +211,7 @@ impl ImageTransformer {
         width,
         height,
         mode: mode.unwrap_or(ResizeMode::Exact),
+        algorithm: algorithm.unwrap_or(ResizeAlgorithm::Lanczos3),
       }));
 
       Ok(self)
@@ -217,7 +252,7 @@ impl ImageTransformer {
   }
 
   #[napi(ts_return_type = "Promise<Uint8Array>")]
-  pub fn to_buffer(&self, format: PixelFormat) -> napi::Result<AsyncTask<AsyncTransform>> {
+  pub fn to_buffer(&mut self, format: PixelFormat) -> napi::Result<AsyncTask<AsyncTransform>> {
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: format,
