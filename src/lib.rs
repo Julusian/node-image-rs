@@ -2,8 +2,7 @@
 
 use image::{DynamicImage, RgbImage, RgbaImage};
 use napi::{
-  bindgen_prelude::Uint8Array,
-  bindgen_prelude::{AsyncTask, ToNapiValue},
+  bindgen_prelude::{AsyncTask, FromNapiValue, ToNapiValue, Uint8Array},
   Env, Error, Status, Task,
 };
 
