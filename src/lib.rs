@@ -78,24 +78,6 @@ fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
   }
 }
 
-fn should_return_self(
-  source_info: &ImageInfo,
-  target_info: &ImageInfo,
-  options: &TransformOptions,
-) -> bool {
-  if source_info.width != target_info.width
-    || source_info.height != target_info.height
-    || source_info.format != target_info.format
-  {
-    // Image is different size
-    false
-  } else if options.flip_v.unwrap_or(false) || options.flip_h.unwrap_or(false) {
-    false
-  } else {
-    true
-  }
-}
-
 pub struct AsyncTransform {
   spec: TransformSpec,
   target_format: PixelFormat,
@@ -134,7 +116,6 @@ impl napi::Task for AsyncTransform {
 
   fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
     Ok(Uint8Array::from(output))
-    // _env.create_uint32(99)
   }
 }
 
