@@ -8,9 +8,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Enable napi feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
-napi = { version = "2.10.16", default-features = false, features = ["napi8"] }
-napi-derive = "2.10.1"
-image = { version = "0.24.5", default-features = false }
+napi = { version = "2.13.3", default-features = false, features = ["napi8"] }
+napi-derive = "2.13.0"
+image = { version = "0.24.7", default-features = false }
 
 [build-dependencies]
 napi-build = "2.0.1"

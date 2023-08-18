@@ -19,9 +19,9 @@
     "url": "https://github.com/julusian/node-image-rs.git"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.14.7",
-    "ava": "^5.1.1",
-    "prettier": "^2.8.4"
+    "@napi-rs/cli": "^2.16.3",
+    "ava": "^5.3.1",
+    "prettier": "^2.8.8"
   },
   "ava": {
     "timeout": "3m"
