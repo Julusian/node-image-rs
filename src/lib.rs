@@ -2,9 +2,8 @@
 
 use image::{DynamicImage, RgbImage, RgbaImage};
 use napi::{
-  bindgen_prelude::Uint8Array,
-  bindgen_prelude::{AsyncTask, ToNapiValue},
-  Env, Error, Status, Task,
+  bindgen_prelude::{AsyncTask, FromNapiValue, ToNapiValue, Uint8Array},
+  Env, Error, JsBuffer, Status, Task,
 };
 
 #[macro_use]
@@ -100,11 +99,12 @@ fn should_return_self(
 pub struct AsyncTransform {
   spec: TransformSpec,
   target_format: PixelFormat,
+  copy_buffer: bool,
 }
 
 impl napi::Task for AsyncTransform {
   type Output = Vec<u8>;
-  type JsValue = Uint8Array;
+  type JsValue = JsBuffer;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
     let mut img = load_image(
@@ -133,9 +133,12 @@ impl napi::Task for AsyncTransform {
     Ok(encoded)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-    Ok(Uint8Array::from(output))
-    // _env.create_uint32(99)
+  fn resolve(&mut self, env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+    if self.copy_buffer {
+      env.create_buffer_copy(output).map(|o| o.into_raw())
+    } else {
+      env.create_buffer_with_data(output).map(|o| o.into_raw())
+    }
   }
 }
 
@@ -170,6 +173,12 @@ pub struct ImageTransformer {
 }
 #[napi]
 impl ImageTransformer {
+  /// Create an `ImageTransformer` from a `Buffer` or `Uint8Array`
+  ///
+  /// @param buffer - The image to transform
+  /// @param width - Width of the image
+  /// @param height - Height of the image
+  /// @param format - Pixel format of the buffer
   #[napi(factory)]
   pub fn from_buffer(buffer: Uint8Array, width: u32, height: u32, format: PixelFormat) -> Self {
     ImageTransformer {
@@ -183,6 +192,11 @@ impl ImageTransformer {
     }
   }
 
+  /// Add a scale step to the transform sequence
+  ///
+  /// @param width - Target width for the image
+  /// @param height - Target height for the image
+  /// @param mode - Method to use when source and target aspect ratios do not match
   #[napi]
   pub fn scale(
     &mut self,
@@ -203,6 +217,7 @@ impl ImageTransformer {
     }
   }
 
+  /// Add a vertical flip step to the transform sequence
   #[napi]
   pub fn flip_vertical(&mut self) -> &Self {
     self.transformer.ops.push(TransformOps::FlipV);
@@ -210,6 +225,7 @@ impl ImageTransformer {
     self
   }
 
+  /// Add a horizontal flip step to the transform sequence
   #[napi]
   pub fn flip_horizontal(&mut self) -> &Self {
     self.transformer.ops.push(TransformOps::FlipH);
@@ -217,6 +233,9 @@ impl ImageTransformer {
     self
   }
 
+  /// Add a rotation step to the transform sequence
+  ///
+  /// @param rotation - The amount to rotate by
   #[napi]
   pub fn rotate(&mut self, rotation: RotationMode) -> &Self {
     self.transformer.ops.push(TransformOps::Rotate(rotation));
@@ -224,11 +243,23 @@ impl ImageTransformer {
     self
   }
 
+  /// Convert the transformed image to a Buffer
+  ///
+  /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
+  ///
+  /// @param format - The pixel format to pack into the buffer
+  /// @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
   #[napi]
-  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<Uint8Array> {
+  pub fn to_buffer_sync(
+    &self,
+    env: Env,
+    format: PixelFormat,
+    copy_buffer: bool,
+  ) -> napi::Result<JsBuffer> {
     let mut task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: format,
+      copy_buffer,
     };
 
     let output = task.compute()?;
@@ -236,11 +267,20 @@ impl ImageTransformer {
     task.resolve(env, output)
   }
 
-  #[napi(ts_return_type = "Promise<Uint8Array>")]
-  pub fn to_buffer(&self, format: PixelFormat) -> napi::Result<AsyncTask<AsyncTransform>> {
+  /// Asynchronously convert the transformed image to a Buffer
+  ///
+  /// @param format - The pixel format to pack into the buffer
+  /// @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
+  #[napi(ts_return_type = "Promise<Buffer>")]
+  pub fn to_buffer(
+    &self,
+    format: PixelFormat,
+    copy_buffer: bool,
+  ) -> napi::Result<AsyncTask<AsyncTransform>> {
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: format,
+      copy_buffer,
     };
 
     Ok(AsyncTask::new(task))

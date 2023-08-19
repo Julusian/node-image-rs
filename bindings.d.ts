@@ -29,11 +29,47 @@ export interface TransformOptions {
   rotation?: RotationMode
 }
 export class ImageTransformer {
+  /**
+   * Create an `ImageTransformer` from a `Buffer` or `Uint8Array`
+   *
+   * @param buffer - The image to transform
+   * @param width - Width of the image
+   * @param height - Height of the image
+   * @param format - Pixel format of the buffer
+   */
   static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat): ImageTransformer
+  /**
+   * Add a scale step to the transform sequence
+   *
+   * @param width - Target width for the image
+   * @param height - Target height for the image
+   * @param mode - Method to use when source and target aspect ratios do not match
+   */
   scale(width: number, height: number, mode?: ResizeMode | undefined | null): this
+  /** Add a vertical flip step to the transform sequence */
   flipVertical(): this
+  /** Add a horizontal flip step to the transform sequence */
   flipHorizontal(): this
+  /**
+   * Add a rotation step to the transform sequence
+   *
+   * @param rotation - The amount to rotate by
+   */
   rotate(rotation: RotationMode): this
-  toBufferSync(format: PixelFormat): Uint8Array
-  toBuffer(format: PixelFormat): Promise<unknown>
+  /**
+   * Convert the transformed image to a Buffer
+   *
+   * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
+   *
+   * @param format - The pixel format to pack into the buffer
+   * @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
+   */
+  toBufferSync(format: PixelFormat, copyBuffer: boolean): Buffer
+  /**
+   * Asynchronously convert the transformed image to a Buffer
+   *
+   * @param format - The pixel format to pack into the buffer
+   * @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
+   */
+  toBuffer(format: PixelFormat, copyBuffer: boolean): Promise<Buffer>
 }
