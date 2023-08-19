@@ -62,14 +62,12 @@ export class ImageTransformer {
    * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
    *
    * @param format - The pixel format to pack into the buffer
-   * @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
    */
-  toBufferSync(format: PixelFormat, copyBuffer: boolean): Buffer
+  toBufferSync(format: PixelFormat): Buffer
   /**
    * Asynchronously convert the transformed image to a Buffer
    *
    * @param format - The pixel format to pack into the buffer
-   * @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
    */
-  toBuffer(format: PixelFormat, copyBuffer: boolean): Promise<Buffer>
+  toBuffer(format: PixelFormat): Promise<Buffer>
 }

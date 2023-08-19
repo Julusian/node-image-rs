@@ -11,7 +11,7 @@ test("crude test", (t) => {
       PixelFormat.Rgba
     )
       .scale(10, 10)
-      .toBufferSync(PixelFormat.Rgba, false)
+      .toBufferSync(PixelFormat.Rgba)
   );
   t.throws(() =>
     ImageTransformer.fromBuffer(
@@ -21,6 +21,6 @@ test("crude test", (t) => {
       PixelFormat.Rgba
     )
       .scale(10, 10)
-      .toBufferSync(PixelFormat.Rgba, false)
+      .toBufferSync(PixelFormat.Rgba)
   );
 });

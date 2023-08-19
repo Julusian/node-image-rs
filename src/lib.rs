@@ -3,7 +3,7 @@
 use image::{DynamicImage, RgbImage, RgbaImage};
 use napi::{
   bindgen_prelude::{AsyncTask, FromNapiValue, ToNapiValue, Uint8Array},
-  Env, Error, JsBuffer, Status, Task,
+  Env, Error, JsBuffer, JsObject, JsString, Status, Task,
 };
 
 #[macro_use]
@@ -75,6 +75,20 @@ fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
   match format {
     PixelFormat::Rgba => img.into_rgba8().into_vec(),
     PixelFormat::Rgb => img.into_rgb8().into_vec(),
+  }
+}
+
+fn is_electron(env: napi::Env) -> napi::Result<bool> {
+  let version = env
+    .get_global()?
+    .get_named_property::<JsObject>("process")?
+    .get_named_property::<JsObject>("versions")?
+    .get_named_property::<JsString>("electron")?
+    .into_utf8();
+
+  match version {
+    Err(_) => Ok(false),
+    Ok(_) => Ok(true),
   }
 }
 
@@ -248,14 +262,12 @@ impl ImageTransformer {
   /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
   ///
   /// @param format - The pixel format to pack into the buffer
-  /// @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
   #[napi]
-  pub fn to_buffer_sync(
-    &self,
-    env: Env,
-    format: PixelFormat,
-    copy_buffer: bool,
-  ) -> napi::Result<JsBuffer> {
+  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<JsBuffer> {
+    let copy_buffer = is_electron(env)?;
+
+    println!("debug copy: {}", copy_buffer);
+
     let mut task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: format,
@@ -270,13 +282,14 @@ impl ImageTransformer {
   /// Asynchronously convert the transformed image to a Buffer
   ///
   /// @param format - The pixel format to pack into the buffer
-  /// @param copyBuffer - Must be set to true when running in electron, in other cases better performance will be observed by setting to false
   #[napi(ts_return_type = "Promise<Buffer>")]
   pub fn to_buffer(
     &self,
+    env: Env,
     format: PixelFormat,
-    copy_buffer: bool,
   ) -> napi::Result<AsyncTask<AsyncTransform>> {
+    let copy_buffer = is_electron(env)?;
+
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: format,
