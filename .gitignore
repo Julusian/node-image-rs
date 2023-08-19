@@ -192,6 +192,6 @@ Cargo.lock
 !.yarn/plugins
 !.yarn/releases
 !.yarn/sdks
-!.yarn/versions
+# !.yarn/versions
 
 *.node
