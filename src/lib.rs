@@ -264,7 +264,7 @@ impl ImageTransformer {
   /// @param format - The pixel format to pack into the buffer
   #[napi]
   pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<JsBuffer> {
-    let copy_buffer = is_electron(env)?;
+    let copy_buffer = is_electron(env).unwrap_or(false);
 
     println!("debug copy: {}", copy_buffer);
 
@@ -288,7 +288,7 @@ impl ImageTransformer {
     env: Env,
     format: PixelFormat,
   ) -> napi::Result<AsyncTask<AsyncTransform>> {
-    let copy_buffer = is_electron(env)?;
+    let copy_buffer = is_electron(env).unwrap_or(false);
 
     let task = AsyncTransform {
       spec: self.transformer.clone(),
