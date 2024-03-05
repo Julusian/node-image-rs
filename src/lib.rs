@@ -71,6 +71,16 @@ fn resize_image(img: &DynamicImage, width: u32, height: u32, mode: &ResizeMode) 
   }
 }
 
+fn crop_image(
+  img: &DynamicImage,
+  width: u32,
+  height: u32,
+  offset: Option<(u32, u32)>,
+) -> DynamicImage {
+  let offset = offset.unwrap_or_else(|| ((img.width() - width) / 2, (img.height() - height) / 2));
+  img.crop_imm(offset.0, offset.1, width, height)
+}
+
 fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
   match format {
     PixelFormat::Rgba => img.into_rgba8().into_vec(),
@@ -132,6 +142,8 @@ impl napi::Task for AsyncTransform {
     for op in self.spec.ops.iter() {
       img = match op {
         TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
+        TransformOps::Crop(op) => crop_image(&img, op.width, op.height, Some((op.x, op.y))),
+        TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None),
         TransformOps::FlipV => img.flipv(),
         TransformOps::FlipH => img.fliph(),
         TransformOps::Rotate(mode) => match mode {
@@ -164,8 +176,24 @@ pub struct ScaleOp {
 }
 
 #[derive(Clone)]
+pub struct CropCenterOp {
+  width: u32,
+  height: u32,
+}
+
+#[derive(Clone)]
+pub struct CropOp {
+  width: u32,
+  height: u32,
+  x: u32,
+  y: u32,
+}
+
+#[derive(Clone)]
 pub enum TransformOps {
   Scale(ScaleOp),
+  Crop(CropOp),
+  CropCenter(CropCenterOp),
   FlipV,
   FlipH,
   Rotate(RotationMode),
@@ -179,6 +207,28 @@ pub struct TransformSpec {
   format: PixelFormat,
 
   ops: Vec<TransformOps>,
+}
+impl TransformSpec {
+  fn get_current_size(&self) -> (u32, u32) {
+    let mut size = (self.width, self.height);
+
+    for op in self.ops.iter() {
+      size = match op {
+        TransformOps::Scale(op) => (op.width, op.height),
+        TransformOps::Crop(op) => (op.width, op.height),
+        TransformOps::CropCenter(op) => (op.width, op.height),
+        TransformOps::FlipV => size,
+        TransformOps::FlipH => size,
+        TransformOps::Rotate(mode) => match mode {
+          RotationMode::CW90 => (size.1, size.0),
+          RotationMode::CW180 => size,
+          RotationMode::CW270 => (size.1, size.0),
+        },
+      };
+    }
+
+    size
+  }
 }
 
 #[napi]
@@ -226,6 +276,50 @@ impl ImageTransformer {
         height,
         mode: mode.unwrap_or(ResizeMode::Exact),
       }));
+
+      Ok(self)
+    }
+  }
+
+  /// Add a crop step to the transform sequence
+  ///
+  /// @param x - X offset for the crop
+  /// @param y - Y offset for the crop
+  /// @param width - Target width for the image
+  /// @param height - Target height for the image
+  #[napi]
+  pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) -> napi::Result<&Self> {
+    let current_size = self.transformer.get_current_size();
+
+    if width == 0 || height == 0 || (width + x) > current_size.0 || (height + y) > current_size.1 {
+      Err(Error::new(Status::GenericFailure, "Invalid dimensions"))
+    } else {
+      self.transformer.ops.push(TransformOps::Crop(CropOp {
+        x,
+        y,
+        width,
+        height,
+      }));
+
+      Ok(self)
+    }
+  }
+
+  /// Add a center crop step to the transform sequence
+  ///
+  /// @param width - Target width for the image
+  /// @param height - Target height for the image
+  #[napi]
+  pub fn crop_center(&mut self, width: u32, height: u32) -> napi::Result<&Self> {
+    let current_size = self.transformer.get_current_size();
+
+    if width == 0 || height == 0 || width > current_size.0 || height > current_size.1 {
+      Err(Error::new(Status::GenericFailure, "Invalid dimensions"))
+    } else {
+      self
+        .transformer
+        .ops
+        .push(TransformOps::CropCenter(CropCenterOp { width, height }));
 
       Ok(self)
     }

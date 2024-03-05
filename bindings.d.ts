@@ -46,6 +46,22 @@ export class ImageTransformer {
    * @param mode - Method to use when source and target aspect ratios do not match
    */
   scale(width: number, height: number, mode?: ResizeMode | undefined | null): this
+  /**
+   * Add a crop step to the transform sequence
+   *
+   * @param x - X offset for the crop
+   * @param y - Y offset for the crop
+   * @param width - Target width for the image
+   * @param height - Target height for the image
+   */
+  crop(x: number, y: number, width: number, height: number): this
+  /**
+   * Add a center crop step to the transform sequence
+   *
+   * @param width - Target width for the image
+   * @param height - Target height for the image
+   */
+  cropCenter(width: number, height: number): this
   /** Add a vertical flip step to the transform sequence */
   flipVertical(): this
   /** Add a horizontal flip step to the transform sequence */
