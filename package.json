@@ -29,7 +29,7 @@
     "timeout": "3m"
   },
   "engines": {
-    "node": ">= 16"
+    "node": ">=18.18"
   },
   "scripts": {
     "build": "napi build --platform --release --js-package-name @image-rs/target --js=false --dts bindings.d.ts",
