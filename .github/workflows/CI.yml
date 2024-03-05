@@ -149,7 +149,9 @@ jobs:
           node-version: ${{ matrix.node }}
           check-latest: true
       - name: Install dependencies
-        run: yarn install
+        run: |
+          corepack enable
+          yarn install
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -180,7 +182,9 @@ jobs:
           node-version: ${{ matrix.node }}
           check-latest: true
       - name: Install dependencies
-        run: yarn install
+        run: |
+          corepack enable
+          yarn install
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -215,6 +219,7 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: |
+          corepack enable
           yarn config set supportedArchitectures.cpu "arm64"
           yarn config set supportedArchitectures.libc "glibc"
           yarn install
@@ -248,7 +253,9 @@ jobs:
           node-version: 18
           check-latest: true
       - name: Install dependencies
-        run: yarn install
+        run: |
+          corepack enable
+          yarn install
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
