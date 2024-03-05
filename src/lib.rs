@@ -2,7 +2,7 @@
 
 use image::{DynamicImage, RgbImage, RgbaImage};
 use napi::{
-  bindgen_prelude::{AsyncTask, FromNapiValue, ToNapiValue, Uint8Array},
+  bindgen_prelude::{AsyncTask, Uint8Array},
   Env, Error, JsBuffer, JsObject, JsString, Status, Task,
 };
 
