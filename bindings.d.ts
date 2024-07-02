@@ -28,7 +28,7 @@ export interface TransformOptions {
   flipV?: boolean
   rotation?: RotationMode
 }
-export class ImageTransformer {
+export declare class ImageTransformer {
   /**
    * Create an `ImageTransformer` from a `Buffer` or `Uint8Array`
    *
