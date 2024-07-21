@@ -1,6 +1,8 @@
 #![deny(clippy::all)]
 
-use image::{DynamicImage, RgbImage, RgbaImage};
+use image::{
+  DynamicImage, GenericImage, ImageBuffer, ImageResult, Pixel, RgbImage, Rgba, RgbaImage,
+};
 use napi::{
   bindgen_prelude::{AsyncTask, Uint8Array},
   Env, Error, JsBuffer, JsObject, JsString, Status, Task,
@@ -81,6 +83,32 @@ fn crop_image(
   img.crop_imm(offset.0, offset.1, width, height)
 }
 
+fn pad_image(
+  img: &DynamicImage,
+  target_format: PixelFormat,
+  left: u32,
+  right: u32,
+  top: u32,
+  bottom: u32,
+  fill_color: Rgba<u8>,
+) -> ImageResult<DynamicImage> {
+  let width = img.width() + left + right;
+  let height = img.height() + top + bottom;
+
+  let mut padded = match target_format {
+    PixelFormat::Rgba => {
+      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
+    }
+    PixelFormat::Rgb => {
+      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgb()))
+    }
+  };
+
+  // let mut padded = DynamicImage::new_rgba8(img.width() + left + right, img.height() + top + bottom);
+  padded.copy_from(img, left, top)?;
+  Ok(padded)
+}
+
 fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
   match format {
     PixelFormat::Rgba => img.into_rgba8().into_vec(),
@@ -126,9 +154,15 @@ pub struct AsyncTransform {
   copy_buffer: bool,
 }
 
+pub struct AsyncTransformResult {
+  pub pixels: Vec<u8>,
+  pub width: u32,
+  pub height: u32,
+}
+
 impl napi::Task for AsyncTransform {
-  type Output = Vec<u8>;
-  type JsValue = JsBuffer;
+  type Output = AsyncTransformResult;
+  type JsValue = ComputedImage;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
     let mut img = load_image(
@@ -144,6 +178,21 @@ impl napi::Task for AsyncTransform {
         TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
         TransformOps::Crop(op) => crop_image(&img, op.width, op.height, Some((op.x, op.y))),
         TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None),
+        TransformOps::Pad(op) => pad_image(
+          &img,
+          self.target_format,
+          op.left,
+          op.right,
+          op.top,
+          op.bottom,
+          op.fill_color,
+        )
+        .or_else(|_e| {
+          Err(Error::new(
+            Status::GenericFailure,
+            "Failed to perform pixel copy",
+          ))
+        })?,
         TransformOps::FlipV => img.flipv(),
         TransformOps::FlipH => img.fliph(),
         TransformOps::Rotate(mode) => match mode {
@@ -154,16 +203,33 @@ impl napi::Task for AsyncTransform {
       };
     }
 
-    let encoded = encode_image(img, &self.target_format);
+    let width = img.width();
+    let height = img.height();
 
-    Ok(encoded)
+    Ok(AsyncTransformResult {
+      pixels: encode_image(img, &self.target_format),
+      width,
+      height,
+    })
   }
 
   fn resolve(&mut self, env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
     if self.copy_buffer {
-      env.create_buffer_copy(output).map(|o| o.into_raw())
+      Ok(ComputedImage {
+        buffer: env
+          .create_buffer_copy(output.pixels)
+          .map(|o| o.into_raw())?,
+        width: output.width,
+        height: output.height,
+      })
     } else {
-      env.create_buffer_with_data(output).map(|o| o.into_raw())
+      Ok(ComputedImage {
+        buffer: env
+          .create_buffer_with_data(output.pixels)
+          .map(|o| o.into_raw())?,
+        width: output.width,
+        height: output.height,
+      })
     }
   }
 }
@@ -190,10 +256,20 @@ pub struct CropOp {
 }
 
 #[derive(Clone)]
+pub struct PadOp {
+  left: u32,
+  right: u32,
+  top: u32,
+  bottom: u32,
+  fill_color: Rgba<u8>,
+}
+
+#[derive(Clone)]
 pub enum TransformOps {
   Scale(ScaleOp),
   Crop(CropOp),
   CropCenter(CropCenterOp),
+  Pad(PadOp),
   FlipV,
   FlipH,
   Rotate(RotationMode),
@@ -217,6 +293,7 @@ impl TransformSpec {
         TransformOps::Scale(op) => (op.width, op.height),
         TransformOps::Crop(op) => (op.width, op.height),
         TransformOps::CropCenter(op) => (op.width, op.height),
+        TransformOps::Pad(op) => (size.0 + op.left + op.right, size.1 + op.top + op.bottom),
         TransformOps::FlipV => size,
         TransformOps::FlipH => size,
         TransformOps::Rotate(mode) => match mode {
@@ -229,6 +306,21 @@ impl TransformSpec {
 
     size
   }
+}
+
+#[napi(object)]
+pub struct ComputedImage {
+  pub buffer: JsBuffer,
+  pub width: u32,
+  pub height: u32,
+}
+
+#[napi(object)]
+pub struct RgbaValue {
+  pub red: u8,
+  pub green: u8,
+  pub blue: u8,
+  pub alpha: u8,
 }
 
 #[napi]
@@ -325,6 +417,19 @@ impl ImageTransformer {
     }
   }
 
+  #[napi]
+  pub fn pad(&mut self, left: u32, right: u32, top: u32, bottom: u32, color: RgbaValue) -> &Self {
+    self.transformer.ops.push(TransformOps::Pad(PadOp {
+      left,
+      right,
+      top,
+      bottom,
+      fill_color: Rgba([color.red, color.green, color.blue, color.alpha]),
+    }));
+
+    self
+  }
+
   /// Add a vertical flip step to the transform sequence
   #[napi]
   pub fn flip_vertical(&mut self) -> &Self {
@@ -357,7 +462,7 @@ impl ImageTransformer {
   ///
   /// @param format - The pixel format to pack into the buffer
   #[napi]
-  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<JsBuffer> {
+  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<ComputedImage> {
     let copy_buffer = is_electron(env).unwrap_or(false);
 
     println!("debug copy: {}", copy_buffer);
@@ -376,7 +481,7 @@ impl ImageTransformer {
   /// Asynchronously convert the transformed image to a Buffer
   ///
   /// @param format - The pixel format to pack into the buffer
-  #[napi(ts_return_type = "Promise<Buffer>")]
+  #[napi(ts_return_type = "Promise<ComputedImage>")]
   pub fn to_buffer(
     &self,
     env: Env,

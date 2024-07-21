@@ -28,6 +28,17 @@ export interface TransformOptions {
   flipV?: boolean
   rotation?: RotationMode
 }
+export interface ComputedImage {
+  buffer: Buffer
+  width: number
+  height: number
+}
+export interface RgbaValue {
+  red: number
+  green: number
+  blue: number
+  alpha: number
+}
 export declare class ImageTransformer {
   /**
    * Create an `ImageTransformer` from a `Buffer` or `Uint8Array`
@@ -62,6 +73,7 @@ export declare class ImageTransformer {
    * @param height - Target height for the image
    */
   cropCenter(width: number, height: number): this
+  pad(left: number, right: number, top: number, bottom: number, color: RgbaValue): this
   /** Add a vertical flip step to the transform sequence */
   flipVertical(): this
   /** Add a horizontal flip step to the transform sequence */
@@ -79,11 +91,11 @@ export declare class ImageTransformer {
    *
    * @param format - The pixel format to pack into the buffer
    */
-  toBufferSync(format: PixelFormat): Buffer
+  toBufferSync(format: PixelFormat): ComputedImage
   /**
    * Asynchronously convert the transformed image to a Buffer
    *
    * @param format - The pixel format to pack into the buffer
    */
-  toBuffer(format: PixelFormat): Promise<Buffer>
+  toBuffer(format: PixelFormat): Promise<ComputedImage>
 }
