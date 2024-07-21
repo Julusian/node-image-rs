@@ -65,11 +65,24 @@ fn load_image(
   }
 }
 
-fn resize_image(img: &DynamicImage, width: u32, height: u32, mode: &ResizeMode) -> DynamicImage {
+fn resize_image(
+  img: &DynamicImage,
+  width: u32,
+  height: u32,
+  mode: &ResizeMode,
+) -> Option<DynamicImage> {
+  if img.width() == width && img.height() == height {
+    return None;
+  }
+
   match mode {
-    ResizeMode::Exact => img.resize_exact(width, height, image::imageops::FilterType::Lanczos3),
-    ResizeMode::Fill => img.resize_to_fill(width, height, image::imageops::FilterType::Lanczos3),
-    ResizeMode::Fit => img.resize(width, height, image::imageops::FilterType::Lanczos3),
+    ResizeMode::Exact => {
+      Some(img.resize_exact(width, height, image::imageops::FilterType::Lanczos3))
+    }
+    ResizeMode::Fill => {
+      Some(img.resize_to_fill(width, height, image::imageops::FilterType::Lanczos3))
+    }
+    ResizeMode::Fit => Some(img.resize(width, height, image::imageops::FilterType::Lanczos3)),
   }
 }
 
@@ -78,9 +91,12 @@ fn crop_image(
   width: u32,
   height: u32,
   offset: Option<(u32, u32)>,
-) -> DynamicImage {
+) -> Option<DynamicImage> {
+  if img.width() >= width && img.height() >= height {
+    return None;
+  }
   let offset = offset.unwrap_or_else(|| ((img.width() - width) / 2, (img.height() - height) / 2));
-  img.crop_imm(offset.0, offset.1, width, height)
+  Some(img.crop_imm(offset.0, offset.1, width, height))
 }
 
 fn pad_image(
@@ -91,10 +107,16 @@ fn pad_image(
   top: u32,
   bottom: u32,
   fill_color: Rgba<u8>,
-) -> ImageResult<DynamicImage> {
+) -> ImageResult<Option<DynamicImage>> {
+  if left == 0 && right == 0 && top == 0 && bottom == 0 {
+    // No padding required
+    return Ok(None);
+  }
+
   let width = img.width() + left + right;
   let height = img.height() + top + bottom;
 
+  // Create the padded image in target_format space, in the hope that we can avoid an extra conversion
   let mut padded = match target_format {
     PixelFormat::Rgba => {
       DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
@@ -106,7 +128,7 @@ fn pad_image(
 
   // let mut padded = DynamicImage::new_rgba8(img.width() + left + right, img.height() + top + bottom);
   padded.copy_from(img, left, top)?;
-  Ok(padded)
+  Ok(Some(padded))
 }
 
 fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
@@ -193,14 +215,15 @@ impl napi::Task for AsyncTransform {
             "Failed to perform pixel copy",
           ))
         })?,
-        TransformOps::FlipV => img.flipv(),
-        TransformOps::FlipH => img.fliph(),
+        TransformOps::FlipV => Some(img.flipv()),
+        TransformOps::FlipH => Some(img.fliph()),
         TransformOps::Rotate(mode) => match mode {
-          RotationMode::CW90 => img.rotate90(),
-          RotationMode::CW180 => img.rotate180(),
-          RotationMode::CW270 => img.rotate270(),
+          RotationMode::CW90 => Some(img.rotate90()),
+          RotationMode::CW180 => Some(img.rotate180()),
+          RotationMode::CW270 => Some(img.rotate270()),
         },
-      };
+      }
+      .unwrap_or(img);
     }
 
     let width = img.width();
