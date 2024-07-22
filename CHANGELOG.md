@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/Julusian/node-image-rs/compare/v1.0.1...v1.0.2) (2024-07-22)
+
+
+### Bug Fixes
+
+* repository url ([ac41460](https://github.com/Julusian/node-image-rs/commit/ac41460ad7a0da61ab24427929d8c590c904a4e8))
+
 ## [1.0.1](https://github.com/Julusian/node-image-rs/compare/v1.0.0...v1.0.1) (2024-07-22)
 
 
