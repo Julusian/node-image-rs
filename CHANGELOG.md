@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/Julusian/node-image-rs/compare/v1.0.0...v1.0.1) (2024-07-22)
+
+
+### Bug Fixes
+
+* auto-publish workflow ([534beb0](https://github.com/Julusian/node-image-rs/commit/534beb06eeda75f1ed3a05f4b7a878e5adf850fd))
+
 ## [1.0.0](https://github.com/Julusian/node-image-rs/compare/v0.4.0...v1.0.0) (2024-07-22)
 
 
