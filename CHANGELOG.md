@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/Julusian/node-image-rs/compare/v1.0.2...v1.0.3) (2024-07-22)
+
+
+### Bug Fixes
+
+* static link msvc runtime ([e7dfb3f](https://github.com/Julusian/node-image-rs/commit/e7dfb3fa77e190b7fa1242fd2e6cce38e0a59fc5))
+
 ## [1.0.2](https://github.com/Julusian/node-image-rs/compare/v1.0.1...v1.0.2) (2024-07-22)
 
 
