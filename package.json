@@ -18,7 +18,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/julusian/node-image-rs.git"
+    "url": "https://github.com/Julusian/node-image-rs"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4",
