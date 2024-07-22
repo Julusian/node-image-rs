@@ -1,6 +1,6 @@
 {
   "name": "@julusian/image-rs",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Limited image-rs bindings for Node.js",
   "main": "index.js",
   "types": "index.d.ts",
