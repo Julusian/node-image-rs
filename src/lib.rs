@@ -1,5 +1,7 @@
 #![deny(clippy::all)]
 
+mod image_rs_copy;
+
 use image::{
   DynamicImage, GenericImage, ImageBuffer, ImageResult, Pixel, RgbImage, Rgba, RgbaImage,
 };
@@ -29,7 +31,7 @@ pub enum ResizeMode {
 
 #[napi(object)]
 pub struct ImageInfo {
-  pub format: PixelFormat,
+  // pub format: PixelFormat,
   pub width: u32,
   pub height: u32,
 }
@@ -152,23 +154,23 @@ fn is_electron(env: napi::Env) -> napi::Result<bool> {
   }
 }
 
-fn should_return_self(
-  source_info: &ImageInfo,
-  target_info: &ImageInfo,
-  options: &TransformOptions,
-) -> bool {
-  if source_info.width != target_info.width
-    || source_info.height != target_info.height
-    || source_info.format != target_info.format
-  {
-    // Image is different size
-    false
-  } else if options.flip_v.unwrap_or(false) || options.flip_h.unwrap_or(false) {
-    false
-  } else {
-    true
-  }
-}
+// fn should_return_self(
+//   source_info: &ImageInfo,
+//   target_info: &ImageInfo,
+//   options: &TransformOptions,
+// ) -> bool {
+//   if source_info.width != target_info.width
+//     || source_info.height != target_info.height
+//     || source_info.format != target_info.format
+//   {
+//     // Image is different size
+//     false
+//   } else if options.flip_v.unwrap_or(false) || options.flip_h.unwrap_or(false) {
+//     false
+//   } else {
+//     true
+//   }
+// }
 
 pub struct AsyncTransform {
   spec: TransformSpec,
@@ -313,7 +315,15 @@ impl TransformSpec {
 
     for op in self.ops.iter() {
       size = match op {
-        TransformOps::Scale(op) => (op.width, op.height),
+        TransformOps::Scale(op) => match op.mode {
+          ResizeMode::Exact => (op.width, op.height),
+          ResizeMode::Fill => {
+            image_rs_copy::resize_dimensions(size.0, size.1, op.width, op.height, true)
+          }
+          ResizeMode::Fit => {
+            image_rs_copy::resize_dimensions(size.0, size.1, op.width, op.height, false)
+          }
+        },
         TransformOps::Crop(op) => (op.width, op.height),
         TransformOps::CropCenter(op) => (op.width, op.height),
         TransformOps::Pad(op) => (size.0 + op.left + op.right, size.1 + op.top + op.bottom),
@@ -440,6 +450,13 @@ impl ImageTransformer {
     }
   }
 
+  /// Pad the image by the specified amount
+  ///
+  /// @param left - Amount to pad on the left
+  /// @param right - Amount to pad on the right
+  /// @param top - Amount to pad on the top
+  /// @param bottom - Amount to pad on the bottom
+  /// @param color - RGBA color to use for padding
   #[napi]
   pub fn pad(&mut self, left: u32, right: u32, top: u32, bottom: u32, color: RgbaValue) -> &Self {
     self.transformer.ops.push(TransformOps::Pad(PadOp {
@@ -477,6 +494,14 @@ impl ImageTransformer {
     self.transformer.ops.push(TransformOps::Rotate(rotation));
 
     self
+  }
+
+  /// Get the current dimensions of the transformed image
+  #[napi]
+  pub fn get_current_dimensions(&self) -> ImageInfo {
+    let (width, height) = self.transformer.get_current_size();
+
+    ImageInfo { width, height }
   }
 
   /// Convert the transformed image to a Buffer

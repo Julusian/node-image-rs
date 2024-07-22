@@ -13,7 +13,6 @@ export const enum ResizeMode {
   Fit = 2
 }
 export interface ImageInfo {
-  format: PixelFormat
   width: number
   height: number
 }
@@ -73,6 +72,15 @@ export declare class ImageTransformer {
    * @param height - Target height for the image
    */
   cropCenter(width: number, height: number): this
+  /**
+   * Pad the image by the specified amount
+   *
+   * @param left - Amount to pad on the left
+   * @param right - Amount to pad on the right
+   * @param top - Amount to pad on the top
+   * @param bottom - Amount to pad on the bottom
+   * @param color - RGBA color to use for padding
+   */
   pad(left: number, right: number, top: number, bottom: number, color: RgbaValue): this
   /** Add a vertical flip step to the transform sequence */
   flipVertical(): this
@@ -84,6 +92,8 @@ export declare class ImageTransformer {
    * @param rotation - The amount to rotate by
    */
   rotate(rotation: RotationMode): this
+  /** Get the current dimensions of the transformed image */
+  getCurrentDimensions(): ImageInfo
   /**
    * Convert the transformed image to a Buffer
    *
