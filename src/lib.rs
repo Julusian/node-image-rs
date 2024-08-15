@@ -93,12 +93,21 @@ fn crop_image(
   width: u32,
   height: u32,
   offset: Option<(u32, u32)>,
-) -> Option<DynamicImage> {
-  if img.width() >= width && img.height() >= height {
-    return None;
+) -> napi::Result<Option<DynamicImage>> {
+  if img.width() == width && img.height() == height {
+    return Ok(None);
   }
+
   let offset = offset.unwrap_or_else(|| ((img.width() - width) / 2, (img.height() - height) / 2));
-  Some(img.crop_imm(offset.0, offset.1, width, height))
+
+  if width + offset.0 > img.width() || height + offset.1 > img.height() {
+    return Err(Error::new(
+      Status::GenericFailure,
+      "Crop dimensions exceed image size",
+    ));
+  }
+
+  Ok(Some(img.crop_imm(offset.0, offset.1, width, height)))
 }
 
 fn pad_image(
@@ -200,8 +209,8 @@ impl napi::Task for AsyncTransform {
     for op in self.spec.ops.iter() {
       img = match op {
         TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
-        TransformOps::Crop(op) => crop_image(&img, op.width, op.height, Some((op.x, op.y))),
-        TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None),
+        TransformOps::Crop(op) => crop_image(&img, op.width, op.height, Some((op.x, op.y)))?,
+        TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None)?,
         TransformOps::Pad(op) => pad_image(
           &img,
           self.target_format,
