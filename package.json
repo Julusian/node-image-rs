@@ -33,7 +33,7 @@
     "node": ">=18.18"
   },
   "scripts": {
-    "build": "napi build --platform --release --js-package-name @image-rs/target --js=false --dts bindings.d.ts",
+    "build": "napi build --platform --release --js-package-name @image-rs/target --js=false --dts bindings.d.ts --no-const-enum",
     "build:debug": "napi build --platform",
     "test": "ava"
   },
