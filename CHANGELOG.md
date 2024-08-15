@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/Julusian/node-image-rs/compare/v1.1.0...v1.1.1) (2024-08-15)
+
+
+### Bug Fixes
+
+* generate full (non-const) enums ([9bdd5d3](https://github.com/Julusian/node-image-rs/commit/9bdd5d337c5ed9b674eb21b85a772ca0bbe17d0f))
+
 ## [1.1.0](https://github.com/Julusian/node-image-rs/compare/v1.0.4...v1.1.0) (2024-08-15)
 
 
