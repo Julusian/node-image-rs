@@ -13,7 +13,7 @@ use napi::{
 #[macro_use]
 extern crate napi_derive;
 
-#[napi]
+#[napi(string_enum)]
 #[derive(PartialEq)]
 pub enum PixelFormat {
   Rgba,
@@ -21,7 +21,7 @@ pub enum PixelFormat {
   // Argb,
 }
 
-#[napi]
+#[napi(string_enum)]
 #[derive(PartialEq)]
 pub enum ResizeMode {
   Exact,
@@ -36,7 +36,7 @@ pub struct ImageInfo {
   pub height: u32,
 }
 
-#[napi]
+#[napi(string_enum)]
 #[derive(PartialEq)]
 pub enum RotationMode {
   CW90,
