@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/Julusian/node-image-rs/compare/v1.0.3...v1.0.4) (2024-08-15)
+
+
+### Bug Fixes
+
+* cropping ([9ecfefe](https://github.com/Julusian/node-image-rs/commit/9ecfefe56a0619b00c1caca255f295e2109f580f))
+
 ## [1.0.3](https://github.com/Julusian/node-image-rs/compare/v1.0.2...v1.0.3) (2024-07-22)
 
 
