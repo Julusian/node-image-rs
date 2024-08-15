@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Julusian/node-image-rs/compare/v1.0.4...v1.1.0) (2024-08-15)
+
+
+### Features
+
+* generate string enums ([251ce89](https://github.com/Julusian/node-image-rs/commit/251ce89df807e971074b1355a8c61f8796be056a))
+
 ## [1.0.4](https://github.com/Julusian/node-image-rs/compare/v1.0.3...v1.0.4) (2024-08-15)
 
 
