@@ -2,19 +2,19 @@
 
 mod image_rs_copy;
 
+use std::io::Cursor;
+
 use image::{
-  DynamicImage, GenericImage, ImageBuffer, ImageResult, Pixel, RgbImage, Rgba, RgbaImage,
+  DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, Pixel, RgbImage, Rgba,
+  RgbaImage,
 };
-use napi::{
-  bindgen_prelude::{AsyncTask, Uint8Array},
-  Env, Error, JsBuffer, JsObject, JsString, Status, Task,
-};
+use napi::{bindgen_prelude::*, Env, Error, Status, Task};
 
 #[macro_use]
 extern crate napi_derive;
 
 #[napi(string_enum)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum PixelFormat {
   Rgba,
   Rgb,
@@ -22,7 +22,15 @@ pub enum PixelFormat {
 }
 
 #[napi(string_enum)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
+pub enum ImageFormat {
+  Jpeg,
+  WebP,
+  Png,
+}
+
+#[napi(string_enum)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum ResizeMode {
   Exact,
   Fill,
@@ -37,7 +45,7 @@ pub struct ImageInfo {
 }
 
 #[napi(string_enum)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum RotationMode {
   CW90,
   CW180,
@@ -53,17 +61,38 @@ pub struct TransformOptions {
 }
 
 fn load_image(
-  source_buffer: &Uint8Array,
+  source_buffer: Vec<u8>,
   width: u32,
   height: u32,
-  format: PixelFormat,
-) -> Option<DynamicImage> {
+  format: Option<PixelFormat>,
+) -> Result<DynamicImage> {
   match format {
-    PixelFormat::Rgba => RgbaImage::from_raw(width, height, source_buffer.to_vec())
-      .and_then(|img| Some(DynamicImage::from(img))),
+    Some(PixelFormat::Rgba) => RgbaImage::from_raw(width, height, source_buffer)
+      .and_then(|img| Some(DynamicImage::from(img)))
+      .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
     // PixelFormat::Argb => todo!(),
-    PixelFormat::Rgb => RgbImage::from_raw(width, height, source_buffer.to_vec())
-      .and_then(|img| Some(DynamicImage::from(img))),
+    Some(PixelFormat::Rgb) => RgbImage::from_raw(width, height, source_buffer)
+      .and_then(|img| Some(DynamicImage::from(img)))
+      .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
+
+    None => {
+      let reader = ImageReader::new(Cursor::new(&source_buffer))
+        .with_guessed_format()
+        .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
+
+      let image = reader
+        .decode()
+        .map_err(|_e| Error::new(Status::GenericFailure, "Failed to decode image from buffer"))?;
+
+      if image.width() != width || image.height() != height {
+        return Err(Error::new(
+          Status::GenericFailure,
+          "Image dimensions do not match specified width and height",
+        ));
+      } else {
+        return Ok(image);
+      }
+    }
   }
 }
 
@@ -112,7 +141,7 @@ fn crop_image(
 
 fn pad_image(
   img: &DynamicImage,
-  target_format: PixelFormat,
+  target_format: &TargetFormat,
   left: u32,
   right: u32,
   top: u32,
@@ -129,11 +158,15 @@ fn pad_image(
 
   // Create the padded image in target_format space, in the hope that we can avoid an extra conversion
   let mut padded = match target_format {
-    PixelFormat::Rgba => {
+    TargetFormat::PixelBuffer(PixelFormat::Rgb) => {
+      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgb()))
+    }
+    TargetFormat::PixelBuffer(PixelFormat::Rgba) => {
       DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
     }
-    PixelFormat::Rgb => {
-      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgb()))
+    TargetFormat::EncodedImage(_) => {
+      // For encoded images, we create a blank RGBA image and convert it later
+      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
     }
   };
 
@@ -142,24 +175,42 @@ fn pad_image(
   Ok(Some(padded))
 }
 
-fn encode_image(img: DynamicImage, format: &PixelFormat) -> Vec<u8> {
+fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
   match format {
-    PixelFormat::Rgba => img.into_rgba8().into_vec(),
-    PixelFormat::Rgb => img.into_rgb8().into_vec(),
-  }
-}
+    TargetFormat::PixelBuffer(PixelFormat::Rgba) => Ok(img.into_rgba8().into_vec()),
+    TargetFormat::PixelBuffer(PixelFormat::Rgb) => Ok(img.into_rgb8().into_vec()),
+    TargetFormat::EncodedImage((format, quality)) => {
+      let mut bytes: Vec<u8> = Vec::new();
+      let mut cursor = Cursor::new(&mut bytes);
 
-fn is_electron(env: napi::Env) -> napi::Result<bool> {
-  let version = env
-    .get_global()?
-    .get_named_property::<JsObject>("process")?
-    .get_named_property::<JsObject>("versions")?
-    .get_named_property::<JsString>("electron")?
-    .into_utf8();
+      match format {
+        ImageFormat::Png => {
+          img.write_with_encoder(image::codecs::png::PngEncoder::new(&mut cursor))
+        }
+        ImageFormat::Jpeg => {
+          let quality_u8 = quality
+            .map(|q| (q * 100.0) as u8)
+            .unwrap_or(75)
+            .clamp(0, 100); // Default quality is 75%
 
-  match version {
-    Err(_) => Ok(false),
-    Ok(_) => Ok(true),
+          img.write_with_encoder(image::codecs::jpeg::JpegEncoder::new_with_quality(
+            &mut cursor,
+            quality_u8,
+          ))
+        }
+        ImageFormat::WebP => {
+          img.write_with_encoder(image::codecs::webp::WebPEncoder::new_lossless(&mut cursor))
+        }
+      }
+      .map_err(|e| {
+        Error::new(
+          Status::GenericFailure,
+          format!("Failed to encode image: {}", e),
+        )
+      })?;
+
+      Ok(bytes)
+    }
   }
 }
 
@@ -181,10 +232,14 @@ fn is_electron(env: napi::Env) -> napi::Result<bool> {
 //   }
 // }
 
+enum TargetFormat {
+  PixelBuffer(PixelFormat),
+  EncodedImage((ImageFormat, Option<f64>)),
+}
+
 pub struct AsyncTransform {
   spec: TransformSpec,
-  target_format: PixelFormat,
-  copy_buffer: bool,
+  target_format: TargetFormat,
 }
 
 pub struct AsyncTransformResult {
@@ -198,13 +253,17 @@ impl napi::Task for AsyncTransform {
   type JsValue = ComputedImage;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
+    // Make sure that the buffer hasn't already been consumed
+    if self.spec.buffer.is_empty() {
+      return Err(Error::new(Status::GenericFailure, "No image data provided"));
+    }
+
     let mut img = load_image(
-      &self.spec.buffer,
+      std::mem::take(&mut self.spec.buffer),
       self.spec.width,
       self.spec.height,
       self.spec.format,
-    )
-    .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"))?;
+    )?;
 
     for op in self.spec.ops.iter() {
       img = match op {
@@ -213,7 +272,7 @@ impl napi::Task for AsyncTransform {
         TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None)?,
         TransformOps::Pad(op) => pad_image(
           &img,
-          self.target_format,
+          &self.target_format,
           op.left,
           op.right,
           op.top,
@@ -240,31 +299,21 @@ impl napi::Task for AsyncTransform {
     let width = img.width();
     let height = img.height();
 
+    let pixels = encode_image(img, &self.target_format)?;
+
     Ok(AsyncTransformResult {
-      pixels: encode_image(img, &self.target_format),
+      pixels,
       width,
       height,
     })
   }
 
-  fn resolve(&mut self, env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-    if self.copy_buffer {
-      Ok(ComputedImage {
-        buffer: env
-          .create_buffer_copy(output.pixels)
-          .map(|o| o.into_raw())?,
-        width: output.width,
-        height: output.height,
-      })
-    } else {
-      Ok(ComputedImage {
-        buffer: env
-          .create_buffer_with_data(output.pixels)
-          .map(|o| o.into_raw())?,
-        width: output.width,
-        height: output.height,
-      })
-    }
+  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+    Ok(ComputedImage {
+      buffer: output.pixels.into(),
+      width: output.width,
+      height: output.height,
+    })
   }
 }
 
@@ -311,10 +360,10 @@ pub enum TransformOps {
 
 #[derive(Clone)]
 pub struct TransformSpec {
-  buffer: Uint8Array, // TODO - is this safe to Clone?
+  buffer: Vec<u8>,
   width: u32,
   height: u32,
-  format: PixelFormat,
+  format: Option<PixelFormat>, // None means not a raw pixel buffer
 
   ops: Vec<TransformOps>,
 }
@@ -352,7 +401,7 @@ impl TransformSpec {
 
 #[napi(object)]
 pub struct ComputedImage {
-  pub buffer: JsBuffer,
+  pub buffer: Buffer,
   pub width: u32,
   pub height: u32,
 }
@@ -381,13 +430,43 @@ impl ImageTransformer {
   pub fn from_buffer(buffer: Uint8Array, width: u32, height: u32, format: PixelFormat) -> Self {
     ImageTransformer {
       transformer: TransformSpec {
-        buffer,
+        buffer: buffer.to_vec(),
         width,
         height,
-        format,
+        format: Some(format),
         ops: Vec::new(),
       },
     }
+  }
+
+  /// Create an `ImageTransformer` from a `Uint8Array` containing raw pixel data
+  ///
+  /// @param image - The raw pixel data of the image
+  /// @returns An `ImageTransformer` instance
+  /// This method does not require width or height, as it will be determined from the pixel data
+  /// and the pixel format.
+  #[napi(factory)]
+  pub fn from_image(image: Uint8Array) -> napi::Result<Self> {
+    let reader = ImageReader::new(Cursor::new(&image))
+      .with_guessed_format()
+      .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
+
+    let dimensions = reader.into_dimensions().map_err(|_e| {
+      Error::new(
+        Status::GenericFailure,
+        "Failed to determine image dimensions",
+      )
+    })?;
+
+    Ok(ImageTransformer {
+      transformer: TransformSpec {
+        buffer: image.to_vec(),
+        width: dimensions.0,
+        height: dimensions.1,
+        format: None,
+        ops: Vec::new(),
+      },
+    })
   }
 
   /// Add a scale step to the transform sequence
@@ -520,14 +599,9 @@ impl ImageTransformer {
   /// @param format - The pixel format to pack into the buffer
   #[napi]
   pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<ComputedImage> {
-    let copy_buffer = is_electron(env).unwrap_or(false);
-
-    println!("debug copy: {}", copy_buffer);
-
     let mut task = AsyncTransform {
       spec: self.transformer.clone(),
-      target_format: format,
-      copy_buffer,
+      target_format: TargetFormat::PixelBuffer(format),
     };
 
     let output = task.compute()?;
@@ -541,15 +615,54 @@ impl ImageTransformer {
   #[napi(ts_return_type = "Promise<ComputedImage>")]
   pub fn to_buffer(
     &self,
-    env: Env,
+    _env: Env,
     format: PixelFormat,
   ) -> napi::Result<AsyncTask<AsyncTransform>> {
-    let copy_buffer = is_electron(env).unwrap_or(false);
-
     let task = AsyncTransform {
       spec: self.transformer.clone(),
-      target_format: format,
-      copy_buffer,
+      target_format: TargetFormat::PixelBuffer(format),
+    };
+
+    Ok(AsyncTask::new(task))
+  }
+
+  /// Convert the transformed image to an encoded image Buffer
+  ///
+  /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
+  ///
+  /// @param format - The image format to pack into the buffer
+  /// @param quality - Optional quality for the image encoding (0.0 to 1.0)
+  #[napi]
+  pub fn to_encoded_image_sync(
+    &self,
+    env: Env,
+    format: ImageFormat,
+    quality: Option<f64>,
+  ) -> napi::Result<ComputedImage> {
+    let mut task = AsyncTransform {
+      spec: self.transformer.clone(),
+      target_format: TargetFormat::EncodedImage((format, quality)),
+    };
+
+    let output = task.compute()?;
+
+    task.resolve(env, output)
+  }
+
+  /// Asynchronously convert the transformed image to an encoded image Buffer
+  ///
+  /// @param format - The image format to pack into the buffer
+  /// @param quality - Optional quality for the image encoding (0.0 to 1.0)
+  #[napi(ts_return_type = "Promise<ComputedImage>")]
+  pub fn to_encoded_image(
+    &self,
+    _env: Env,
+    format: ImageFormat,
+    quality: Option<f64>,
+  ) -> napi::Result<AsyncTask<AsyncTransform>> {
+    let task = AsyncTransform {
+      spec: self.transformer.clone(),
+      target_format: TargetFormat::EncodedImage((format, quality)),
     };
 
     Ok(AsyncTask::new(task))
