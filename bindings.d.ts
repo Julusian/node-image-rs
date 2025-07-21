@@ -11,14 +11,13 @@ export declare class ImageTransformer {
    */
   static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat): ImageTransformer
   /**
-   * Create an `ImageTransformer` from a `Uint8Array` containing raw pixel data
+   * Create an `ImageTransformer` from a `Buffer` or `Uint8Array` containing an encoded image
    *
-   * @param image - The raw pixel data of the image
+   * @param image - The encoded image to decode
    * @returns An `ImageTransformer` instance
-   * This method does not require width or height, as it will be determined from the pixel data
-   * and the pixel format.
+   * This method does not require width or height, as it will be determined from reading the image
    */
-  static fromImage(image: Uint8Array): ImageTransformer
+  static fromEncodedImage(image: Uint8Array): ImageTransformer
   /**
    * Add a scale step to the transform sequence
    *
@@ -85,16 +84,16 @@ export declare class ImageTransformer {
    * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
    *
    * @param format - The image format to pack into the buffer
-   * @param quality - Optional quality for the image encoding (0.0 to 1.0)
+   * @param options - Optional encoding options containing quality settings
    */
-  toEncodedImageSync(format: ImageFormat, quality?: number | undefined | null): ComputedImage
+  toEncodedImageSync(format: ImageFormat, options?: EncodingOptions | undefined | null): ComputedImage
   /**
    * Asynchronously convert the transformed image to an encoded image Buffer
    *
    * @param format - The image format to pack into the buffer
-   * @param quality - Optional quality for the image encoding (0.0 to 1.0)
+   * @param options - Optional encoding options containing quality settings
    */
-  toEncodedImage(format: ImageFormat, quality?: number | undefined | null): Promise<ComputedImage>
+  toEncodedImage(format: ImageFormat, options?: EncodingOptions | undefined | null): Promise<ComputedImage>
 }
 
 export interface ComputedImage {
@@ -103,27 +102,25 @@ export interface ComputedImage {
   height: number
 }
 
-export declare const enum ImageFormat {
-  Jpeg = 'Jpeg',
-  WebP = 'WebP',
-  Png = 'Png'
+export interface EncodingOptions {
+  quality?: number
 }
+
+export type ImageFormat =  'Jpeg'|
+'WebP'|
+'Png';
 
 export interface ImageInfo {
   width: number
   height: number
 }
 
-export declare const enum PixelFormat {
-  Rgba = 'Rgba',
-  Rgb = 'Rgb'
-}
+export type PixelFormat =  'rgba'|
+'rgb';
 
-export declare const enum ResizeMode {
-  Exact = 'Exact',
-  Fill = 'Fill',
-  Fit = 'Fit'
-}
+export type ResizeMode =  'Exact'|
+'Fill'|
+'Fit';
 
 export interface RgbaValue {
   red: number
@@ -132,11 +129,9 @@ export interface RgbaValue {
   alpha: number
 }
 
-export declare const enum RotationMode {
-  CW90 = 'CW90',
-  CW180 = 'CW180',
-  CW270 = 'CW270'
-}
+export type RotationMode =  'CW90'|
+'CW180'|
+'CW270';
 
 export interface TransformOptions {
   scaleMode?: ResizeMode

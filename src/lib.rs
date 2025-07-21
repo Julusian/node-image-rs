@@ -16,8 +16,10 @@ extern crate napi_derive;
 #[napi(string_enum)]
 #[derive(PartialEq, Clone, Copy)]
 pub enum PixelFormat {
-  Rgba,
-  Rgb,
+  #[allow(non_camel_case_types)]
+  rgba,
+  #[allow(non_camel_case_types)]
+  rgb,
   // Argb,
 }
 
@@ -67,11 +69,11 @@ fn load_image(
   format: Option<PixelFormat>,
 ) -> Result<DynamicImage> {
   match format {
-    Some(PixelFormat::Rgba) => RgbaImage::from_raw(width, height, source_buffer)
+    Some(PixelFormat::rgba) => RgbaImage::from_raw(width, height, source_buffer)
       .and_then(|img| Some(DynamicImage::from(img)))
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
     // PixelFormat::Argb => todo!(),
-    Some(PixelFormat::Rgb) => RgbImage::from_raw(width, height, source_buffer)
+    Some(PixelFormat::rgb) => RgbImage::from_raw(width, height, source_buffer)
       .and_then(|img| Some(DynamicImage::from(img)))
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
 
@@ -158,10 +160,10 @@ fn pad_image(
 
   // Create the padded image in target_format space, in the hope that we can avoid an extra conversion
   let mut padded = match target_format {
-    TargetFormat::PixelBuffer(PixelFormat::Rgb) => {
+    TargetFormat::PixelBuffer(PixelFormat::rgb) => {
       DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgb()))
     }
-    TargetFormat::PixelBuffer(PixelFormat::Rgba) => {
+    TargetFormat::PixelBuffer(PixelFormat::rgba) => {
       DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
     }
     TargetFormat::EncodedImage(_) => {
@@ -177,8 +179,8 @@ fn pad_image(
 
 fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
   match format {
-    TargetFormat::PixelBuffer(PixelFormat::Rgba) => Ok(img.into_rgba8().into_vec()),
-    TargetFormat::PixelBuffer(PixelFormat::Rgb) => Ok(img.into_rgb8().into_vec()),
+    TargetFormat::PixelBuffer(PixelFormat::rgba) => Ok(img.into_rgba8().into_vec()),
+    TargetFormat::PixelBuffer(PixelFormat::rgb) => Ok(img.into_rgb8().into_vec()),
     TargetFormat::EncodedImage((format, quality)) => {
       let mut bytes: Vec<u8> = Vec::new();
       let mut cursor = Cursor::new(&mut bytes);
@@ -292,6 +294,10 @@ impl napi::Task for AsyncTransform {
           RotationMode::CW180 => Some(img.rotate180()),
           RotationMode::CW270 => Some(img.rotate270()),
         },
+        TransformOps::Composite(other) => {
+          // TODO
+          None
+        }
       }
       .unwrap_or(img);
     }
@@ -356,6 +362,7 @@ pub enum TransformOps {
   FlipV,
   FlipH,
   Rotate(RotationMode),
+  Composite(TransformSpec),
 }
 
 #[derive(Clone)]
@@ -392,6 +399,7 @@ impl TransformSpec {
           RotationMode::CW180 => size,
           RotationMode::CW270 => (size.1, size.0),
         },
+        TransformOps::Composite(_op) => size,
       };
     }
 
@@ -412,6 +420,11 @@ pub struct RgbaValue {
   pub green: u8,
   pub blue: u8,
   pub alpha: u8,
+}
+
+#[napi(object)]
+pub struct EncodingOptions {
+  pub quality: Option<f64>,
 }
 
 #[napi]
@@ -583,6 +596,18 @@ impl ImageTransformer {
     self
   }
 
+  /// Composite another image on top of the current image
+  ///
+  /// @param other - The other image transformer to draw from
+  pub fn composite(&mut self, other: &ImageTransformer) -> &Self {
+    self
+      .transformer
+      .ops
+      .push(TransformOps::Composite(other.transformer.clone()));
+
+    self
+  }
+
   /// Get the current dimensions of the transformed image
   #[napi]
   pub fn get_current_dimensions(&self) -> ImageInfo {
@@ -630,14 +655,15 @@ impl ImageTransformer {
   /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
   ///
   /// @param format - The image format to pack into the buffer
-  /// @param quality - Optional quality for the image encoding (0.0 to 1.0)
+  /// @param options - Optional encoding options
   #[napi]
   pub fn to_encoded_image_sync(
     &self,
     env: Env,
     format: ImageFormat,
-    quality: Option<f64>,
+    options: Option<EncodingOptions>,
   ) -> napi::Result<ComputedImage> {
+    let quality = options.as_ref().and_then(|opts| opts.quality);
     let mut task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: TargetFormat::EncodedImage((format, quality)),
@@ -651,14 +677,15 @@ impl ImageTransformer {
   /// Asynchronously convert the transformed image to an encoded image Buffer
   ///
   /// @param format - The image format to pack into the buffer
-  /// @param quality - Optional quality for the image encoding (0.0 to 1.0)
+  /// @param options - Optional encoding options
   #[napi(ts_return_type = "Promise<ComputedImage>")]
   pub fn to_encoded_image(
     &self,
     _env: Env,
     format: ImageFormat,
-    quality: Option<f64>,
+    options: Option<EncodingOptions>,
   ) -> napi::Result<AsyncTask<AsyncTransform>> {
+    let quality = options.as_ref().and_then(|opts| opts.quality);
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: TargetFormat::EncodedImage((format, quality)),
