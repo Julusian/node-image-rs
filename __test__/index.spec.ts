@@ -1,4 +1,4 @@
-import test from "ava";
+import { describe, it, expect } from "vitest";
 import { ImageTransformer } from "../index.js";
 import {
   generateSolidColorImage,
@@ -7,8 +7,7 @@ import {
   generateQuadrantImage,
   createTestPattern,
   assertImagesSimilar,
-  calculatePixelDifference,
-} from "./test-utils.mjs";
+} from "./test-utils.js";
 
 // Test data constants
 const TEST_SIZES = {
@@ -16,14 +15,14 @@ const TEST_SIZES = {
   medium: { width: 100, height: 100 },
   large: { width: 500, height: 300 },
   rect: { width: 200, height: 100 },
-};
+} as const;
 
 // Basic functionality tests
-test("ImageTransformer.fromBuffer - valid RGBA buffer", (t) => {
+it("ImageTransformer.fromBuffer - valid RGBA buffer", () => {
   const { width, height } = TEST_SIZES.small;
   const buffer = generateSolidColorImage(width, height, 255, 0, 0, 255, "rgba");
 
-  t.notThrows(() => {
+  expect(() => {
     const transformer = ImageTransformer.fromBuffer(
       buffer,
       width,
@@ -31,16 +30,16 @@ test("ImageTransformer.fromBuffer - valid RGBA buffer", (t) => {
       "rgba"
     );
     const result = transformer.toBufferSync("rgba");
-    t.is(result.width, width);
-    t.is(result.height, height);
-  });
+    expect(result.width).toBe(width);
+    expect(result.height).toBe(height);
+  }).not.toThrow();
 });
 
-test("ImageTransformer.fromBuffer - valid RGB buffer", (t) => {
+it("ImageTransformer.fromBuffer - valid RGB buffer", () => {
   const { width, height } = TEST_SIZES.small;
   const buffer = generateSolidColorImage(width, height, 255, 0, 0, 255, "rgb");
 
-  t.notThrows(() => {
+  expect(() => {
     const transformer = ImageTransformer.fromBuffer(
       buffer,
       width,
@@ -48,25 +47,25 @@ test("ImageTransformer.fromBuffer - valid RGB buffer", (t) => {
       "rgb"
     );
     const result = transformer.toBufferSync("rgb");
-    t.is(result.width, width);
-    t.is(result.height, height);
-  });
+    expect(result.width).toBe(width);
+    expect(result.height).toBe(height);
+  }).not.toThrow();
 });
 
-test("ImageTransformer.fromBuffer - invalid buffer size", (t) => {
+it("ImageTransformer.fromBuffer - invalid buffer size", () => {
   const { width, height } = TEST_SIZES.small;
   // Create buffer that's too small (missing pixels)
   const buffer = Buffer.alloc(width * height * 3); // RGB size for RGBA format
 
-  t.throws(() => {
+  expect(() => {
     ImageTransformer.fromBuffer(buffer, width, height, "rgba").toBufferSync(
       "rgba"
     );
-  });
+  }).toThrow();
 });
 
 // Scaling tests
-test("scale - upscale exact", (t) => {
+it("scale - upscale exact", () => {
   const original = TEST_SIZES.small;
   const target = { width: 20, height: 20 };
   const buffer = generateSolidColorImage(
@@ -87,8 +86,8 @@ test("scale - upscale exact", (t) => {
     .scale(target.width, target.height, "Exact")
     .toBufferSync("rgba");
 
-  t.is(result.width, target.width);
-  t.is(result.height, target.height);
+  expect(result.width).toBe(target.width);
+  expect(result.height).toBe(target.height);
 
   // Check that the color is preserved (should still be red)
   const expected = generateSolidColorImage(
@@ -99,7 +98,6 @@ test("scale - upscale exact", (t) => {
     0
   );
   assertImagesSimilar(
-    t,
     result.buffer,
     expected,
     target.width,
@@ -109,7 +107,7 @@ test("scale - upscale exact", (t) => {
   );
 });
 
-test("scale - downscale exact", (t) => {
+it("scale - downscale exact", () => {
   const original = TEST_SIZES.medium;
   const target = TEST_SIZES.small;
   const buffer = generateSolidColorImage(
@@ -130,8 +128,8 @@ test("scale - downscale exact", (t) => {
     .scale(target.width, target.height, "Exact")
     .toBufferSync("rgba");
 
-  t.is(result.width, target.width);
-  t.is(result.height, target.height);
+  expect(result.width).toBe(target.width);
+  expect(result.height).toBe(target.height);
 
   // Check that the color is preserved (should still be green)
   const expected = generateSolidColorImage(
@@ -142,7 +140,6 @@ test("scale - downscale exact", (t) => {
     0
   );
   assertImagesSimilar(
-    t,
     result.buffer,
     expected,
     target.width,
@@ -152,7 +149,7 @@ test("scale - downscale exact", (t) => {
   );
 });
 
-test("scale - aspect ratio modes", (t) => {
+it("scale - aspect ratio modes", () => {
   const original = { width: 100, height: 50 }; // 2:1 ratio
   const target = { width: 60, height: 60 }; // 1:1 ratio
   const buffer = generateQuadrantImage(original.width, original.height);
@@ -168,8 +165,8 @@ test("scale - aspect ratio modes", (t) => {
   const exactResult = transformer
     .scale(target.width, target.height, "Exact")
     .toBufferSync("rgba");
-  t.is(exactResult.width, target.width);
-  t.is(exactResult.height, target.height);
+  expect(exactResult.width).toBe(target.width);
+  expect(exactResult.height).toBe(target.height);
 
   // Reset transformer for next test
   const transformer2 = ImageTransformer.fromBuffer(
@@ -185,12 +182,12 @@ test("scale - aspect ratio modes", (t) => {
   // Fit mode should maintain aspect ratio and fit within bounds
   // Original is 100x50 (2:1), target is 60x60
   // To fit within 60x60 while maintaining 2:1 ratio: 60x30
-  t.is(fitResult.width, 60);
-  t.is(fitResult.height, 30);
+  expect(fitResult.width).toBe(60);
+  expect(fitResult.height).toBe(30);
 });
 
 // Cropping tests
-test("crop - center region", (t) => {
+it("crop - center region", () => {
   const original = TEST_SIZES.medium;
   const cropSize = { width: 50, height: 50 };
   const buffer = generateQuadrantImage(original.width, original.height);
@@ -205,11 +202,11 @@ test("crop - center region", (t) => {
     .crop(25, 25, cropSize.width, cropSize.height)
     .toBufferSync("rgba");
 
-  t.is(result.width, cropSize.width);
-  t.is(result.height, cropSize.height);
+  expect(result.width).toBe(cropSize.width);
+  expect(result.height).toBe(cropSize.height);
 });
 
-test("cropCenter - center crop", (t) => {
+it("cropCenter - center crop", () => {
   const original = TEST_SIZES.medium;
   const cropSize = { width: 50, height: 50 };
   const buffer = generateSolidColorImage(
@@ -230,8 +227,8 @@ test("cropCenter - center crop", (t) => {
     .cropCenter(cropSize.width, cropSize.height)
     .toBufferSync("rgba");
 
-  t.is(result.width, cropSize.width);
-  t.is(result.height, cropSize.height);
+  expect(result.width).toBe(cropSize.width);
+  expect(result.height).toBe(cropSize.height);
 
   // Should still be the same color
   const expected = generateSolidColorImage(
@@ -242,7 +239,6 @@ test("cropCenter - center crop", (t) => {
     128
   );
   assertImagesSimilar(
-    t,
     result.buffer,
     expected,
     cropSize.width,
@@ -253,7 +249,7 @@ test("cropCenter - center crop", (t) => {
 });
 
 // Flip tests
-test("flipHorizontal - horizontal flip", (t) => {
+it("flipHorizontal - horizontal flip", () => {
   const size = TEST_SIZES.small;
   const buffer = generateGradientImage(size.width, size.height);
 
@@ -265,8 +261,8 @@ test("flipHorizontal - horizontal flip", (t) => {
   );
   const result = transformer.flipHorizontal().toBufferSync("rgba");
 
-  t.is(result.width, size.width);
-  t.is(result.height, size.height);
+  expect(result.width).toBe(size.width);
+  expect(result.height).toBe(size.height);
 
   // Check that the first pixel (should now be blue from the gradient)
   // and last pixel (should now be red) are swapped
@@ -274,10 +270,10 @@ test("flipHorizontal - horizontal flip", (t) => {
   const originalData = new Uint8Array(buffer);
 
   // First pixel of result should match last pixel of original (horizontally)
-  t.is(resultData[0], originalData[(size.width - 1) * 4]); // Red component
+  expect(resultData[0]).toBe(originalData[(size.width - 1) * 4]); // Red component
 });
 
-test("flipVertical - vertical flip", (t) => {
+it("flipVertical - vertical flip", () => {
   const size = TEST_SIZES.small;
   const buffer = createTestPattern(size.width, size.height);
 
@@ -289,8 +285,8 @@ test("flipVertical - vertical flip", (t) => {
   );
   const result = transformer.flipVertical().toBufferSync("rgba");
 
-  t.is(result.width, size.width);
-  t.is(result.height, size.height);
+  expect(result.width).toBe(size.width);
+  expect(result.height).toBe(size.height);
 
   // Verify the flip by checking that top row matches original bottom row
   const resultData = new Uint8Array(result.buffer);
@@ -303,11 +299,11 @@ test("flipVertical - vertical flip", (t) => {
     size.height * size.width * 4
   );
 
-  t.deepEqual(Array.from(firstRowResult), Array.from(lastRowOriginal));
+  expect(Array.from(firstRowResult)).toStrictEqual(Array.from(lastRowOriginal));
 });
 
 // Rotation tests
-test("rotate - 90 degrees clockwise", (t) => {
+it("rotate - 90 degrees clockwise", () => {
   const size = { width: 10, height: 20 }; // Rectangular to test rotation
   const buffer = generateQuadrantImage(size.width, size.height);
 
@@ -320,11 +316,11 @@ test("rotate - 90 degrees clockwise", (t) => {
   const result = transformer.rotate("CW90").toBufferSync("rgba");
 
   // After 90° rotation, width and height should swap
-  t.is(result.width, size.height);
-  t.is(result.height, size.width);
+  expect(result.width).toBe(size.height);
+  expect(result.height).toBe(size.width);
 });
 
-test("rotate - 180 degrees", (t) => {
+it("rotate - 180 degrees", () => {
   const size = TEST_SIZES.small;
   const buffer = generateGradientImage(size.width, size.height);
 
@@ -337,11 +333,11 @@ test("rotate - 180 degrees", (t) => {
   const result = transformer.rotate("CW180").toBufferSync("rgba");
 
   // Dimensions should remain the same
-  t.is(result.width, size.width);
-  t.is(result.height, size.height);
+  expect(result.width).toBe(size.width);
+  expect(result.height).toBe(size.height);
 });
 
-test("rotate - 270 degrees clockwise", (t) => {
+it("rotate - 270 degrees clockwise", () => {
   const size = { width: 15, height: 10 };
   const buffer = createTestPattern(size.width, size.height);
 
@@ -354,12 +350,12 @@ test("rotate - 270 degrees clockwise", (t) => {
   const result = transformer.rotate("CW270").toBufferSync("rgba");
 
   // After 270° rotation, width and height should swap
-  t.is(result.width, size.height);
-  t.is(result.height, size.width);
+  expect(result.width).toBe(size.height);
+  expect(result.height).toBe(size.width);
 });
 
 // Padding tests
-test("pad - add padding around image", (t) => {
+it("pad - add padding around image", () => {
   const original = TEST_SIZES.small;
   const padding = { left: 5, right: 10, top: 3, bottom: 7 };
   const paddingColor = { red: 255, green: 255, blue: 0, alpha: 255 }; // Yellow
@@ -384,12 +380,12 @@ test("pad - add padding around image", (t) => {
   const expectedWidth = original.width + padding.left + padding.right;
   const expectedHeight = original.height + padding.top + padding.bottom;
 
-  t.is(result.width, expectedWidth);
-  t.is(result.height, expectedHeight);
+  expect(result.width).toBe(expectedWidth);
+  expect(result.height).toBe(expectedHeight);
 });
 
 // Chain multiple operations
-test("complex transformation chain", (t) => {
+it("complex transformation chain", () => {
   const original = TEST_SIZES.medium;
   const buffer = generateCheckerboardImage(original.width, original.height, 10);
 
@@ -406,12 +402,12 @@ test("complex transformation chain", (t) => {
     .cropCenter(30, 30)
     .toBufferSync("rgba");
 
-  t.is(result.width, 30);
-  t.is(result.height, 30);
+  expect(result.width).toBe(30);
+  expect(result.height).toBe(30);
 });
 
 // Format conversion tests
-test("format conversion - RGBA to RGB", (t) => {
+it("format conversion - RGBA to RGB", () => {
   const size = TEST_SIZES.small;
   const buffer = generateSolidColorImage(
     size.width,
@@ -431,18 +427,18 @@ test("format conversion - RGBA to RGB", (t) => {
   );
   const result = transformer.toBufferSync("rgb");
 
-  t.is(result.width, size.width);
-  t.is(result.height, size.height);
-  t.is(result.buffer.length, size.width * size.height * 3); // RGB format
+  expect(result.width).toBe(size.width);
+  expect(result.height).toBe(size.height);
+  expect(result.buffer.length).toBe(size.width * size.height * 3); // RGB format
 
   // Check color preservation (first pixel)
   const resultData = new Uint8Array(result.buffer);
-  t.is(resultData[0], 255); // Red
-  t.is(resultData[1], 128); // Green
-  t.is(resultData[2], 64); // Blue
+  expect(resultData[0]).toBe(255); // Red
+  expect(resultData[1]).toBe(128); // Green
+  expect(resultData[2]).toBe(64); // Blue
 });
 
-test("format conversion - RGB to RGBA", (t) => {
+it("format conversion - RGB to RGBA", () => {
   const size = TEST_SIZES.small;
   const buffer = generateSolidColorImage(
     size.width,
@@ -462,20 +458,20 @@ test("format conversion - RGB to RGBA", (t) => {
   );
   const result = transformer.toBufferSync("rgba");
 
-  t.is(result.width, size.width);
-  t.is(result.height, size.height);
-  t.is(result.buffer.length, size.width * size.height * 4); // RGBA format
+  expect(result.width).toBe(size.width);
+  expect(result.height).toBe(size.height);
+  expect(result.buffer.length).toBe(size.width * size.height * 4); // RGBA format
 
   // Check color preservation and alpha (first pixel)
   const resultData = new Uint8Array(result.buffer);
-  t.is(resultData[0], 255); // Red
-  t.is(resultData[1], 128); // Green
-  t.is(resultData[2], 64); // Blue
-  t.is(resultData[3], 255); // Alpha should be 255
+  expect(resultData[0]).toBe(255); // Red
+  expect(resultData[1]).toBe(128); // Green
+  expect(resultData[2]).toBe(64); // Blue
+  expect(resultData[3]).toBe(255); // Alpha should be 255
 });
 
 // Async operations tests
-test("toBuffer - async version", async (t) => {
+it("toBuffer - async version", async () => {
   const size = TEST_SIZES.small;
   const buffer = generateSolidColorImage(size.width, size.height, 100, 200, 50);
 
@@ -487,13 +483,13 @@ test("toBuffer - async version", async (t) => {
   );
   const result = await transformer.scale(20, 20).toBuffer("rgba");
 
-  t.is(result.width, 20);
-  t.is(result.height, 20);
-  t.true(Buffer.isBuffer(result.buffer));
+  expect(result.width).toBe(20);
+  expect(result.height).toBe(20);
+  expect(Buffer.isBuffer(result.buffer)).toBe(true);
 });
 
 // getCurrentDimensions tests
-test("getCurrentDimensions - track size changes", (t) => {
+it("getCurrentDimensions - track size changes", () => {
   const original = TEST_SIZES.rect;
   const buffer = generateSolidColorImage(
     original.width,
@@ -512,37 +508,37 @@ test("getCurrentDimensions - track size changes", (t) => {
 
   // Check initial dimensions
   let dims = transformer.getCurrentDimensions();
-  t.is(dims.width, original.width);
-  t.is(dims.height, original.height);
+  expect(dims.width).toBe(original.width);
+  expect(dims.height).toBe(original.height);
 
   // After scaling
   transformer.scale(100, 50);
   dims = transformer.getCurrentDimensions();
-  t.is(dims.width, 100);
-  t.is(dims.height, 50);
+  expect(dims.width).toBe(100);
+  expect(dims.height).toBe(50);
 
   // After cropping
   transformer.crop(10, 10, 30, 20);
   dims = transformer.getCurrentDimensions();
-  t.is(dims.width, 30);
-  t.is(dims.height, 20);
+  expect(dims.width).toBe(30);
+  expect(dims.height).toBe(20);
 });
 
 // Edge cases and error handling
-test("edge case - zero dimensions", (t) => {
+it("edge case - zero dimensions", () => {
   const buffer = generateSolidColorImage(10, 10, 255, 255, 255);
   const transformer = ImageTransformer.fromBuffer(buffer, 10, 10, "rgba");
 
-  t.throws(() => {
+  expect(() => {
     transformer.scale(0, 10).toBufferSync("rgba");
-  });
+  }).toThrow();
 
-  t.throws(() => {
+  expect(() => {
     transformer.scale(10, 0).toBufferSync("rgba");
-  });
+  }).toThrow();
 });
 
-test("edge case - crop out of bounds", (t) => {
+it("edge case - crop out of bounds", () => {
   const size = TEST_SIZES.small;
   const buffer = generateSolidColorImage(
     size.width,
@@ -558,13 +554,13 @@ test("edge case - crop out of bounds", (t) => {
     "rgba"
   );
 
-  t.throws(() => {
+  expect(() => {
     transformer.crop(15, 15, 5, 5).toBufferSync("rgba"); // Crop beyond image bounds
-  });
+  }).toThrow();
 });
 
 // Test padding color verification
-test("pad - padding color correctness", (t) => {
+it("pad - padding color correctness", () => {
   const original = { width: 5, height: 5 };
   const padding = { left: 2, right: 3, top: 1, bottom: 2 };
   const paddingColor = { red: 128, green: 64, blue: 192, alpha: 255 };
@@ -589,29 +585,29 @@ test("pad - padding color correctness", (t) => {
   const expectedWidth = original.width + padding.left + padding.right;
   const expectedHeight = original.height + padding.top + padding.bottom;
 
-  t.is(result.width, expectedWidth);
-  t.is(result.height, expectedHeight);
+  expect(result.width).toBe(expectedWidth);
+  expect(result.height).toBe(expectedHeight);
 
   const resultData = new Uint8Array(result.buffer);
 
   // Check top-left corner (should be padding color)
-  t.is(resultData[0], paddingColor.red);
-  t.is(resultData[1], paddingColor.green);
-  t.is(resultData[2], paddingColor.blue);
-  t.is(resultData[3], paddingColor.alpha);
+  expect(resultData[0]).toBe(paddingColor.red);
+  expect(resultData[1]).toBe(paddingColor.green);
+  expect(resultData[2]).toBe(paddingColor.blue);
+  expect(resultData[3]).toBe(paddingColor.alpha);
 
   // Check center pixel (should be original white)
   const centerX = padding.left + Math.floor(original.width / 2);
   const centerY = padding.top + Math.floor(original.height / 2);
   const centerOffset = (centerY * expectedWidth + centerX) * 4;
-  t.is(resultData[centerOffset], 255); // White
-  t.is(resultData[centerOffset + 1], 255);
-  t.is(resultData[centerOffset + 2], 255);
-  t.is(resultData[centerOffset + 3], 255);
+  expect(resultData[centerOffset]).toBe(255); // White
+  expect(resultData[centerOffset + 1]).toBe(255);
+  expect(resultData[centerOffset + 2]).toBe(255);
+  expect(resultData[centerOffset + 3]).toBe(255);
 });
 
 // Test rotation correctness with asymmetric pattern
-test("rotate - rotation correctness verification", (t) => {
+it("rotate - rotation correctness verification", () => {
   const size = { width: 4, height: 3 };
   // Create a simple pattern: top row red, bottom rows blue
   const buffer = new Uint8Array(size.width * size.height * 4);
@@ -644,15 +640,219 @@ test("rotate - rotation correctness verification", (t) => {
 
   // After 90° CW rotation: width=3, height=4
   // The original top row (red) becomes the rightmost column
-  t.is(result.width, size.height);
-  t.is(result.height, size.width);
+  expect(result.width).toBe(size.height);
+  expect(result.height).toBe(size.width);
 
   const resultData = new Uint8Array(result.buffer);
   // Check rightmost column (should be red, was top row)
   for (let y = 0; y < result.height; y++) {
     const offset = (y * result.width + (result.width - 1)) * 4;
-    t.is(resultData[offset], 255); // Red
-    t.is(resultData[offset + 1], 0);
-    t.is(resultData[offset + 2], 0);
+    expect(resultData[offset]).toBe(255); // Red
+    expect(resultData[offset + 1]).toBe(0);
+    expect(resultData[offset + 2]).toBe(0);
   }
+});
+
+// Test format consistency - round trip conversions
+it("format consistency - RGBA->RGB->RGBA round trip", () => {
+  const size = { width: 6, height: 6 };
+  const original = generateSolidColorImage(
+    size.width,
+    size.height,
+    200,
+    100,
+    50,
+    255
+  );
+
+  const transformer = ImageTransformer.fromBuffer(
+    original,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const rgbResult = transformer.toBufferSync("rgb");
+
+  // Create new transformer from RGB data
+  const transformer2 = ImageTransformer.fromBuffer(
+    rgbResult.buffer,
+    size.width,
+    size.height,
+    "rgb"
+  );
+  const rgbaResult = transformer2.toBufferSync("rgba");
+
+  expect(rgbaResult.width).toBe(size.width);
+  expect(rgbaResult.height).toBe(size.height);
+
+  // Check that RGB values are preserved (alpha will be 255)
+  const resultData = new Uint8Array(rgbaResult.buffer);
+  expect(resultData[0]).toBe(200); // Red
+  expect(resultData[1]).toBe(100); // Green
+  expect(resultData[2]).toBe(50); // Blue
+  expect(resultData[3]).toBe(255); // Alpha should be 255
+});
+
+// Test specific resize mode behaviors
+it("resize modes - Fill vs Fit vs Exact behavior verification", () => {
+  const original = { width: 60, height: 30 }; // 2:1 aspect ratio
+  const target = { width: 40, height: 40 }; // 1:1 aspect ratio
+  const buffer = generateQuadrantImage(original.width, original.height);
+
+  // Exact mode - should distort to exact dimensions
+  const exactTransformer = ImageTransformer.fromBuffer(
+    buffer,
+    original.width,
+    original.height,
+    "rgba"
+  );
+  const exactResult = exactTransformer
+    .scale(target.width, target.height, "Exact")
+    .toBufferSync("rgba");
+  expect(exactResult.width).toBe(target.width);
+  expect(exactResult.height).toBe(target.height);
+
+  // Fit mode - should maintain aspect ratio, fit within bounds
+  // Original 60x30 (2:1) into 40x40 target -> should be 40x20 (maintains 2:1 ratio)
+  const fitTransformer = ImageTransformer.fromBuffer(
+    buffer,
+    original.width,
+    original.height,
+    "rgba"
+  );
+  const fitResult = fitTransformer
+    .scale(target.width, target.height, "Fit")
+    .toBufferSync("rgba");
+  expect(fitResult.width).toBe(40);
+  expect(fitResult.height).toBe(20);
+
+  // Fill mode - should maintain aspect ratio, fill bounds (may crop)
+  const fillTransformer = ImageTransformer.fromBuffer(
+    buffer,
+    original.width,
+    original.height,
+    "rgba"
+  );
+  const fillResult = fillTransformer
+    .scale(target.width, target.height, "Fill")
+    .toBufferSync("rgba");
+  expect(fillResult.width).toBe(target.width);
+  expect(fillResult.height).toBe(target.height);
+});
+
+// Test crop boundary conditions
+it("crop - boundary validation", () => {
+  const size = { width: 10, height: 10 };
+  const buffer = generateSolidColorImage(
+    size.width,
+    size.height,
+    100,
+    150,
+    200
+  );
+
+  // Valid crops
+  const transformer1 = ImageTransformer.fromBuffer(
+    buffer,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const result1 = transformer1
+    .crop(0, 0, size.width, size.height)
+    .toBufferSync("rgba");
+  expect(result1.width).toBe(size.width);
+  expect(result1.height).toBe(size.height);
+
+  const transformer2 = ImageTransformer.fromBuffer(
+    buffer,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const result2 = transformer2.crop(5, 5, 5, 5).toBufferSync("rgba");
+  expect(result2.width).toBe(5);
+  expect(result2.height).toBe(5);
+
+  // Edge case: 1x1 crop
+  const transformer3 = ImageTransformer.fromBuffer(
+    buffer,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const result3 = transformer3.crop(9, 9, 1, 1).toBufferSync("rgba");
+  expect(result3.width).toBe(1);
+  expect(result3.height).toBe(1);
+});
+
+// Test chaining operation correctness
+it("operation chain - order dependency", () => {
+  const size = { width: 8, height: 6 };
+  const buffer = generateQuadrantImage(size.width, size.height);
+
+  // Chain 1: Scale then rotate
+  const transformer1 = ImageTransformer.fromBuffer(
+    buffer,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const result1 = transformer1.scale(4, 3).rotate("CW90").toBufferSync("rgba");
+  expect(result1.width).toBe(3); // After scale(4,3) then rotate90: 3x4
+  expect(result1.height).toBe(4);
+
+  // Chain 2: Rotate then scale
+  const transformer2 = ImageTransformer.fromBuffer(
+    buffer,
+    size.width,
+    size.height,
+    "rgba"
+  );
+  const result2 = transformer2.rotate("CW90").scale(4, 3).toBufferSync("rgba");
+  expect(result2.width).toBe(4); // After rotate90(6x8) then scale: 4x3
+  expect(result2.height).toBe(3);
+
+  // Results should have different dimensions due to order
+  expect(result1.width).not.toBe(result2.width);
+  expect(result1.height).not.toBe(result2.height);
+});
+
+// Test format handling edge cases
+it("format edge cases - buffer size validation", () => {
+  const size = { width: 4, height: 4 };
+
+  // Correct RGBA buffer size
+  const rgbaBuffer = Buffer.alloc(size.width * size.height * 4);
+  expect(() => {
+    ImageTransformer.fromBuffer(rgbaBuffer, size.width, size.height, "rgba");
+  }).not.toThrow();
+
+  // Correct RGB buffer size
+  const rgbBuffer = Buffer.alloc(size.width * size.height * 3);
+  expect(() => {
+    ImageTransformer.fromBuffer(rgbBuffer, size.width, size.height, "rgb");
+  }).not.toThrow();
+
+  // Wrong buffer size for RGBA
+  const wrongRgbaBuffer = Buffer.alloc(size.width * size.height * 3);
+  expect(() => {
+    ImageTransformer.fromBuffer(
+      wrongRgbaBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    ).toBufferSync("rgba");
+  }).toThrow();
+
+  // Wrong buffer size for RGB
+  const wrongRgbBuffer = Buffer.alloc(size.width * size.height * 2);
+  expect(() => {
+    ImageTransformer.fromBuffer(
+      wrongRgbBuffer,
+      size.width,
+      size.height,
+      "rgb"
+    ).toBufferSync("rgb");
+  }).toThrow();
 });

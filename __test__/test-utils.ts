@@ -6,14 +6,14 @@
  * Generate a solid color image buffer
  */
 export function generateSolidColorImage(
-  width,
-  height,
-  r,
-  g,
-  b,
-  a = 255,
-  format = "rgba"
-) {
+  width: number,
+  height: number,
+  r: number,
+  g: number,
+  b: number,
+  a: number = 255,
+  format: "rgba" | "rgb" = "rgba"
+): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
 
@@ -33,7 +33,11 @@ export function generateSolidColorImage(
 /**
  * Generate a gradient image buffer (horizontal red to blue gradient)
  */
-export function generateGradientImage(width, height, format = "rgba") {
+export function generateGradientImage(
+  width: number,
+  height: number,
+  format: "rgba" | "rgb" = "rgba"
+): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
 
@@ -59,11 +63,11 @@ export function generateGradientImage(width, height, format = "rgba") {
  * Generate a checkerboard pattern
  */
 export function generateCheckerboardImage(
-  width,
-  height,
-  squareSize = 8,
-  format = "rgba"
-) {
+  width: number,
+  height: number,
+  squareSize: number = 8,
+  format: "rgba" | "rgb" = "rgba"
+): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
 
@@ -92,7 +96,11 @@ export function generateCheckerboardImage(
 /**
  * Generate a simple pattern with different colors in each quadrant
  */
-export function generateQuadrantImage(width, height, format = "rgba") {
+export function generateQuadrantImage(
+  width: number,
+  height: number,
+  format: "rgba" | "rgb" = "rgba"
+): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
   const halfWidth = Math.floor(width / 2);
@@ -103,7 +111,7 @@ export function generateQuadrantImage(width, height, format = "rgba") {
       const i = y * width + x;
       const offset = i * channels;
 
-      let r, g, b;
+      let r: number, g: number, b: number;
       if (x < halfWidth && y < halfHeight) {
         // Top-left: Red
         r = 255;
@@ -138,18 +146,34 @@ export function generateQuadrantImage(width, height, format = "rgba") {
   return Buffer.from(buffer);
 }
 
+interface PixelDifference {
+  different: boolean;
+  difference: number;
+  maxDiff: number;
+  totalDiff: number;
+  differentPixels: number;
+  percentDifferent: number;
+}
+
 /**
  * Simple pixel difference calculation for image comparison
  */
 export function calculatePixelDifference(
-  buffer1,
-  buffer2,
-  width,
-  height,
-  format = "rgba"
-) {
+  buffer1: Buffer,
+  buffer2: Buffer,
+  width: number,
+  height: number,
+  format: "rgba" | "rgb" = "rgba"
+): PixelDifference {
   if (buffer1.length !== buffer2.length) {
-    return { different: true, difference: Infinity, maxDiff: 255 };
+    return {
+      different: true,
+      difference: Infinity,
+      maxDiff: 255,
+      totalDiff: Infinity,
+      differentPixels: width * height,
+      percentDifferent: 100,
+    };
   }
 
   const channels = format === "rgba" ? 4 : 3;
@@ -190,14 +214,13 @@ export function calculatePixelDifference(
  * Assert that two images are similar within a tolerance
  */
 export function assertImagesSimilar(
-  t,
-  actual,
-  expected,
-  width,
-  height,
-  format = "rgba",
-  tolerance = 1
-) {
+  actual: Buffer,
+  expected: Buffer,
+  width: number,
+  height: number,
+  format: "rgba" | "rgb" = "rgba",
+  tolerance: number = 1
+): void {
   const diff = calculatePixelDifference(
     actual,
     expected,
@@ -207,12 +230,8 @@ export function assertImagesSimilar(
   );
 
   if (diff.maxDiff > tolerance) {
-    t.fail(
+    throw new Error(
       `Images differ by more than tolerance. Max difference: ${diff.maxDiff}, Average: ${diff.difference.toFixed(2)}, ${diff.percentDifferent.toFixed(2)}% of pixels different`
-    );
-  } else {
-    t.pass(
-      `Images are similar. Max difference: ${diff.maxDiff}, Average: ${diff.difference.toFixed(2)}`
     );
   }
 }
@@ -220,7 +239,11 @@ export function assertImagesSimilar(
 /**
  * Create a test image with specific dimensions filled with a pattern
  */
-export function createTestPattern(width, height, format = "rgba") {
+export function createTestPattern(
+  width: number,
+  height: number,
+  format: "rgba" | "rgb" = "rgba"
+): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
 

@@ -23,11 +23,9 @@
   "devDependencies": {
     "@napi-rs/cli": "^3.0.1",
     "@types/node": "^20.19.9",
-    "ava": "^6.4.1",
-    "prettier": "^3.6.2"
-  },
-  "ava": {
-    "timeout": "3m"
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18.18"
@@ -35,7 +33,7 @@
   "scripts": {
     "build": "napi build --platform --release --js-package-name @image-rs/target --no-js --dts bindings.d.ts --no-const-enum",
     "build:debug": "napi build --platform",
-    "test": "ava"
+    "test": "vitest"
   },
   "packageManager": "yarn@4.9.2"
 }

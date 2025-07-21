@@ -195,7 +195,14 @@ fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
             .unwrap_or(75)
             .clamp(0, 100); // Default quality is 75%
 
-          img.write_with_encoder(image::codecs::jpeg::JpegEncoder::new_with_quality(
+          // The jpeg encoder does not support Rgba8 format
+          let encode_img = if img.color() != image::ColorType::Rgb8 {
+            DynamicImage::from(img.to_rgb8())
+          } else {
+            img
+          };
+
+          encode_img.write_with_encoder(image::codecs::jpeg::JpegEncoder::new_with_quality(
             &mut cursor,
             quality_u8,
           ))

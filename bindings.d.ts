@@ -84,14 +84,14 @@ export declare class ImageTransformer {
    * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
    *
    * @param format - The image format to pack into the buffer
-   * @param options - Optional encoding options containing quality settings
+   * @param options - Optional encoding options
    */
   toEncodedImageSync(format: ImageFormat, options?: EncodingOptions | undefined | null): ComputedImage
   /**
    * Asynchronously convert the transformed image to an encoded image Buffer
    *
    * @param format - The image format to pack into the buffer
-   * @param options - Optional encoding options containing quality settings
+   * @param options - Optional encoding options
    */
   toEncodedImage(format: ImageFormat, options?: EncodingOptions | undefined | null): Promise<ComputedImage>
 }
