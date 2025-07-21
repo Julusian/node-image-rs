@@ -103,7 +103,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -228,7 +227,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
           architecture: ${{ matrix.settings.architecture }}
       - name: Install dependencies
         run: |
@@ -267,7 +265,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
       - name: Output docker params
         id: docker
         run: |
@@ -325,7 +322,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
       - name: Install dependencies
         run: |
           corepack enable
@@ -366,7 +362,6 @@ jobs:
         with:
           node-version: 20
           check-latest: true
-          cache: yarn
       - name: Install dependencies
         run: |
           corepack enable
