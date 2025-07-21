@@ -856,3 +856,370 @@ it("format edge cases - buffer size validation", () => {
     ).toBufferSync("rgb");
   }).toThrow();
 });
+
+// Overlay operation tests
+describe("Overlay operations", () => {
+  it("should overlay with basic alpha blending", () => {
+    const size = { width: 50, height: 50 };
+
+    // Create base image (solid red)
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      255,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Create overlay image (semi-transparent blue)
+    const overlayBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      0,
+      0,
+      255,
+      128,
+      "rgba"
+    );
+    const overlayTransformer = ImageTransformer.fromBuffer(
+      overlayBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Overlay overlay onto base at origin
+    const result = baseTransformer
+      .overlay(overlayTransformer, 0, 0)
+      .toBufferSync("rgba");
+
+    expect(result.width).toBe(size.width);
+    expect(result.height).toBe(size.height);
+
+    const pixels = result.buffer;
+    // Should be a blend of red and blue with 50% alpha
+    expect(pixels[0]).toBeGreaterThan(100); // Should have some red
+    expect(pixels[2]).toBeGreaterThan(100); // Should have some blue
+    expect(pixels[1]).toBe(0); // Green should remain 0
+  });
+
+  it("should overlay at different positions", () => {
+    const size = { width: 100, height: 100 };
+
+    // Create base image (solid green)
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      0,
+      255,
+      0,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Create smaller overlay image (solid red, 20x20)
+    const overlaySize = { width: 20, height: 20 };
+    const overlayBuffer = generateSolidColorImage(
+      overlaySize.width,
+      overlaySize.height,
+      255,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const overlayTransformer = ImageTransformer.fromBuffer(
+      overlayBuffer,
+      overlaySize.width,
+      overlaySize.height,
+      "rgba"
+    );
+
+    // Overlay at position (40, 40) - center area
+    const result = baseTransformer
+      .overlay(overlayTransformer, 40, 40)
+      .toBufferSync("rgba");
+
+    const pixels = result.buffer;
+
+    // Check that top-left corner is still green (base image)
+    expect(pixels[0]).toBe(0); // Red
+    expect(pixels[1]).toBe(255); // Green
+    expect(pixels[2]).toBe(0); // Blue
+
+    // Check center area where overlay should be (red)
+    const centerOffset = (50 * size.width + 50) * 4;
+    expect(pixels[centerOffset]).toBe(255); // Red
+    expect(pixels[centerOffset + 1]).toBe(0); // Green
+    expect(pixels[centerOffset + 2]).toBe(0); // Blue
+  });
+
+  it("should handle multiple overlay layers", () => {
+    const size = { width: 80, height: 80 };
+
+    // Create base image (solid black)
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      0,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Create first overlay (red with 50% alpha, 40x40)
+    const overlay1Buffer = generateSolidColorImage(
+      40,
+      40,
+      255,
+      0,
+      0,
+      128,
+      "rgba"
+    );
+    const overlay1Transformer = ImageTransformer.fromBuffer(
+      overlay1Buffer,
+      40,
+      40,
+      "rgba"
+    );
+
+    // Create second overlay (green with 50% alpha, 40x40)
+    const overlay2Buffer = generateSolidColorImage(
+      40,
+      40,
+      0,
+      255,
+      0,
+      128,
+      "rgba"
+    );
+    const overlay2Transformer = ImageTransformer.fromBuffer(
+      overlay2Buffer,
+      40,
+      40,
+      "rgba"
+    );
+
+    // Create third overlay (blue with 50% alpha, 40x40)
+    const overlay3Buffer = generateSolidColorImage(
+      40,
+      40,
+      0,
+      0,
+      255,
+      128,
+      "rgba"
+    );
+    const overlay3Transformer = ImageTransformer.fromBuffer(
+      overlay3Buffer,
+      40,
+      40,
+      "rgba"
+    );
+
+    // Apply multiple overlays at different positions
+    const result = baseTransformer
+      .overlay(overlay1Transformer, 0, 0) // Top-left
+      .overlay(overlay2Transformer, 20, 20) // Center-left overlap
+      .overlay(overlay3Transformer, 40, 40) // Bottom-right
+      .toBufferSync("rgba");
+
+    expect(result.width).toBe(size.width);
+    expect(result.height).toBe(size.height);
+
+    const pixels = result.buffer;
+
+    // Check top-left corner (should be red from first overlay)
+    expect(pixels[0]).toBeGreaterThan(100); // Red
+    expect(pixels[1]).toBeLessThan(50); // Green
+    expect(pixels[2]).toBeLessThan(50); // Blue
+
+    // Check overlap area (30,30) - should have red and green mixed
+    const overlapOffset = (30 * size.width + 30) * 4;
+    expect(pixels[overlapOffset]).toBeGreaterThan(50); // Some red
+    expect(pixels[overlapOffset + 1]).toBeGreaterThan(50); // Some green
+
+    // Check bottom-right area (60,60) - should be blue from third overlay
+    const bottomRightOffset = (60 * size.width + 60) * 4;
+    expect(pixels[bottomRightOffset + 2]).toBeGreaterThan(100); // Blue
+  });
+
+  it("should handle partial overlay positioning", () => {
+    const size = { width: 50, height: 50 };
+
+    // Create base image (solid white)
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      255,
+      255,
+      255,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Create overlay (solid red, 30x30)
+    const overlayBuffer = generateSolidColorImage(
+      30,
+      30,
+      255,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const overlayTransformer = ImageTransformer.fromBuffer(
+      overlayBuffer,
+      30,
+      30,
+      "rgba"
+    );
+
+    // Position overlay so it extends beyond the base image bounds
+    const result = baseTransformer
+      .overlay(overlayTransformer, 35, 35)
+      .toBufferSync("rgba");
+
+    const pixels = result.buffer;
+
+    // Check that the visible part of the overlay is overlaid
+    const visibleOverlayOffset = (40 * size.width + 40) * 4;
+    expect(pixels[visibleOverlayOffset]).toBe(255); // Red
+    expect(pixels[visibleOverlayOffset + 1]).toBe(0); // Green
+    expect(pixels[visibleOverlayOffset + 2]).toBe(0); // Blue
+
+    // Check that areas outside overlay remain white
+    const outsideOffset = (10 * size.width + 10) * 4;
+    expect(pixels[outsideOffset]).toBe(255); // Red
+    expect(pixels[outsideOffset + 1]).toBe(255); // Green
+    expect(pixels[outsideOffset + 2]).toBe(255); // Blue
+  });
+
+  it("should reject overlays completely outside bounds", () => {
+    const size = { width: 50, height: 50 };
+
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      255,
+      255,
+      255,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    const overlayBuffer = generateSolidColorImage(
+      20,
+      20,
+      255,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const overlayTransformer = ImageTransformer.fromBuffer(
+      overlayBuffer,
+      20,
+      20,
+      "rgba"
+    );
+
+    // Position overlay completely outside bounds
+    expect(() => {
+      baseTransformer.overlay(overlayTransformer, 100, 100);
+    }).toThrow();
+
+    expect(() => {
+      baseTransformer.overlay(overlayTransformer, -50, -50);
+    }).toThrow();
+  });
+
+  it("should work with transformed overlays", () => {
+    const size = { width: 60, height: 60 };
+
+    // Create base image (solid blue)
+    const baseBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      0,
+      0,
+      255,
+      255,
+      "rgba"
+    );
+    const baseTransformer = ImageTransformer.fromBuffer(
+      baseBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    );
+
+    // Create overlay and apply transformations
+    const overlayBuffer = generateSolidColorImage(
+      size.width,
+      size.height,
+      255,
+      0,
+      0,
+      255,
+      "rgba"
+    );
+    const overlayTransformer = ImageTransformer.fromBuffer(
+      overlayBuffer,
+      size.width,
+      size.height,
+      "rgba"
+    )
+      .scale(30, 30, "Exact") // Scale down
+      .rotate("CW90"); // Rotate
+
+    // Overlay transformed overlay
+    const result = baseTransformer
+      .overlay(overlayTransformer, 15, 15)
+      .toBufferSync("rgba");
+
+    expect(result.width).toBe(size.width);
+    expect(result.height).toBe(size.height);
+
+    const pixels = result.buffer;
+
+    // Check that the transformed overlay is overlaid
+    const centerOffset = (30 * size.width + 30) * 4;
+    expect(pixels[centerOffset]).toBe(255); // Red from overlay
+    expect(pixels[centerOffset + 2]).toBe(0); // Blue should be replaced
+  });
+});

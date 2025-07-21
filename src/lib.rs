@@ -3,12 +3,13 @@
 mod image_rs_copy;
 
 use std::io::Cursor;
+use std::sync::Arc;
 
 use image::{
   DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, Pixel, RgbImage, Rgba,
-  RgbaImage,
+  RgbaImage, imageops::overlay,
 };
-use napi::{Env, Error, Status, Task, bindgen_prelude::*};
+use napi::{Env, Error, Status, bindgen_prelude::*};
 
 #[macro_use]
 extern crate napi_derive;
@@ -63,22 +64,22 @@ pub struct TransformOptions {
 }
 
 fn load_image(
-  source_buffer: Vec<u8>,
+  source_buffer: &Vec<u8>,
   width: u32,
   height: u32,
   format: Option<PixelFormat>,
 ) -> Result<DynamicImage> {
   match format {
-    Some(PixelFormat::rgba) => RgbaImage::from_raw(width, height, source_buffer)
+    Some(PixelFormat::rgba) => RgbaImage::from_raw(width, height, source_buffer.clone())
       .and_then(|img| Some(DynamicImage::from(img)))
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
     // PixelFormat::Argb => todo!(),
-    Some(PixelFormat::rgb) => RgbImage::from_raw(width, height, source_buffer)
+    Some(PixelFormat::rgb) => RgbImage::from_raw(width, height, source_buffer.clone())
       .and_then(|img| Some(DynamicImage::from(img)))
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
 
     None => {
-      let reader = ImageReader::new(Cursor::new(&source_buffer))
+      let reader = ImageReader::new(Cursor::new(source_buffer))
         .with_guessed_format()
         .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
 
@@ -177,6 +178,21 @@ fn pad_image(
   Ok(Some(padded))
 }
 
+fn overlay_image(
+  mut img: DynamicImage,
+  other: &TransformSpec,
+  x: i64,
+  y: i64,
+) -> napi::Result<DynamicImage> {
+  // Recursively render the overlay image
+  let other_img = render_image(other)?;
+
+  // No resizing - use the overlay image as-is and place it at the specified coordinates
+  overlay(&mut img, &other_img, x, y);
+
+  Ok(img)
+}
+
 fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
   match format {
     TargetFormat::PixelBuffer(PixelFormat::rgba) => Ok(img.into_rgba8().into_vec()),
@@ -241,6 +257,55 @@ fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
 //   }
 // }
 
+fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
+  if spec.buffer.is_empty() {
+    return Err(Error::new(Status::GenericFailure, "No image data provided"));
+  }
+
+  let mut img = load_image(spec.buffer.as_ref(), spec.width, spec.height, spec.format)?;
+
+  for op in spec.ops.iter() {
+    img = match op {
+      TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode).unwrap_or(img),
+      TransformOps::Crop(op) => {
+        crop_image(&img, op.width, op.height, Some((op.x, op.y)))?.unwrap_or(img)
+      }
+      TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None)?.unwrap_or(img),
+      TransformOps::Pad(op) => pad_image(
+        &img,
+        &TargetFormat::PixelBuffer(PixelFormat::rgba), // Use RGBA for intermediate compositing
+        op.left,
+        op.right,
+        op.top,
+        op.bottom,
+        op.fill_color,
+      )
+      .or_else(|_e| {
+        Err(Error::new(
+          Status::GenericFailure,
+          "Failed to perform pixel copy",
+        ))
+      })?
+      .unwrap_or(img),
+      TransformOps::FlipV => img.flipv(),
+      TransformOps::FlipH => img.fliph(),
+      TransformOps::Rotate(mode) => match mode {
+        RotationMode::CW90 => img.rotate90(),
+        RotationMode::CW180 => img.rotate180(),
+        RotationMode::CW270 => img.rotate270(),
+      },
+      TransformOps::Overlay((other, x, y)) => overlay_image(img, other, *x, *y).map_err(|e| {
+        Error::new(
+          Status::GenericFailure,
+          format!("Failed to overlay image: {}", e),
+        )
+      })?,
+    };
+  }
+
+  Ok(img)
+}
+
 enum TargetFormat {
   PixelBuffer(PixelFormat),
   EncodedImage((ImageFormat, Option<f64>)),
@@ -262,52 +327,7 @@ impl napi::Task for AsyncTransform {
   type JsValue = ComputedImage;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    // Make sure that the buffer hasn't already been consumed
-    if self.spec.buffer.is_empty() {
-      return Err(Error::new(Status::GenericFailure, "No image data provided"));
-    }
-
-    let mut img = load_image(
-      std::mem::take(&mut self.spec.buffer),
-      self.spec.width,
-      self.spec.height,
-      self.spec.format,
-    )?;
-
-    for op in self.spec.ops.iter() {
-      img = match op {
-        TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode),
-        TransformOps::Crop(op) => crop_image(&img, op.width, op.height, Some((op.x, op.y)))?,
-        TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None)?,
-        TransformOps::Pad(op) => pad_image(
-          &img,
-          &self.target_format,
-          op.left,
-          op.right,
-          op.top,
-          op.bottom,
-          op.fill_color,
-        )
-        .or_else(|_e| {
-          Err(Error::new(
-            Status::GenericFailure,
-            "Failed to perform pixel copy",
-          ))
-        })?,
-        TransformOps::FlipV => Some(img.flipv()),
-        TransformOps::FlipH => Some(img.fliph()),
-        TransformOps::Rotate(mode) => match mode {
-          RotationMode::CW90 => Some(img.rotate90()),
-          RotationMode::CW180 => Some(img.rotate180()),
-          RotationMode::CW270 => Some(img.rotate270()),
-        },
-        TransformOps::Composite(other) => {
-          // TODO
-          None
-        }
-      }
-      .unwrap_or(img);
-    }
+    let img = render_image(&self.spec)?;
 
     let width = img.width();
     let height = img.height();
@@ -369,12 +389,12 @@ pub enum TransformOps {
   FlipV,
   FlipH,
   Rotate(RotationMode),
-  Composite(TransformSpec),
+  Overlay((TransformSpec, i64, i64)), // TransformSpec, x, y coordinates
 }
 
 #[derive(Clone)]
 pub struct TransformSpec {
-  buffer: Vec<u8>,
+  buffer: Arc<Vec<u8>>,
   width: u32,
   height: u32,
   format: Option<PixelFormat>, // None means not a raw pixel buffer
@@ -406,7 +426,7 @@ impl TransformSpec {
           RotationMode::CW180 => size,
           RotationMode::CW270 => (size.1, size.0),
         },
-        TransformOps::Composite(_op) => size,
+        TransformOps::Overlay(_op) => size,
       };
     }
 
@@ -450,7 +470,7 @@ impl ImageTransformer {
   pub fn from_buffer(buffer: Uint8Array, width: u32, height: u32, format: PixelFormat) -> Self {
     ImageTransformer {
       transformer: TransformSpec {
-        buffer: buffer.to_vec(),
+        buffer: Arc::new(buffer.to_vec()),
         width,
         height,
         format: Some(format),
@@ -479,7 +499,7 @@ impl ImageTransformer {
 
     Ok(ImageTransformer {
       transformer: TransformSpec {
-        buffer: image.to_vec(),
+        buffer: Arc::new(image.to_vec()),
         width: dimensions.0,
         height: dimensions.1,
         format: None,
@@ -603,16 +623,29 @@ impl ImageTransformer {
     self
   }
 
-  /// Composite another image on top of the current image
+  /// Overlay another image on top of the current image
   ///
   /// @param other - The other image transformer to draw from
-  pub fn composite(&mut self, other: &ImageTransformer) -> &Self {
+  /// @param x - X coordinate where to place the overlay
+  /// @param y - Y coordinate where to place the overlay
+  #[napi]
+  pub fn overlay(&mut self, other: &ImageTransformer, x: i64, y: i64) -> napi::Result<&Self> {
+    let current_size = self.transformer.get_current_size();
+
+    // Check if the overlay would be completely outside the base image bounds
+    if x >= current_size.0 as i64 || y >= current_size.1 as i64 || x < 0 || y < 0 {
+      return Err(Error::new(
+        Status::GenericFailure,
+        "Overlay image is completely outside the bounds of the base image",
+      ));
+    }
+
     self
       .transformer
       .ops
-      .push(TransformOps::Composite(other.transformer.clone()));
+      .push(TransformOps::Overlay((other.transformer.clone(), x, y)));
 
-    self
+    Ok(self)
   }
 
   /// Get the current dimensions of the transformed image
@@ -629,15 +662,19 @@ impl ImageTransformer {
   ///
   /// @param format - The pixel format to pack into the buffer
   #[napi]
-  pub fn to_buffer_sync(&self, env: Env, format: PixelFormat) -> napi::Result<ComputedImage> {
-    let mut task = AsyncTransform {
-      spec: self.transformer.clone(),
-      target_format: TargetFormat::PixelBuffer(format),
-    };
+  pub fn to_buffer_sync(&self, _env: Env, format: PixelFormat) -> napi::Result<ComputedImage> {
+    let img = render_image(&self.transformer)?;
 
-    let output = task.compute()?;
+    let width = img.width();
+    let height = img.height();
 
-    task.resolve(env, output)
+    let pixels = encode_image(img, &TargetFormat::PixelBuffer(format))?;
+
+    Ok(ComputedImage {
+      buffer: pixels.into(),
+      width,
+      height,
+    })
   }
 
   /// Asynchronously convert the transformed image to a Buffer
@@ -666,19 +703,24 @@ impl ImageTransformer {
   #[napi]
   pub fn to_encoded_image_sync(
     &self,
-    env: Env,
+    _env: Env,
     format: ImageFormat,
     options: Option<EncodingOptions>,
   ) -> napi::Result<ComputedImage> {
     let quality = options.as_ref().and_then(|opts| opts.quality);
-    let mut task = AsyncTransform {
-      spec: self.transformer.clone(),
-      target_format: TargetFormat::EncodedImage((format, quality)),
-    };
 
-    let output = task.compute()?;
+    let img = render_image(&self.transformer)?;
 
-    task.resolve(env, output)
+    let width = img.width();
+    let height = img.height();
+
+    let pixels = encode_image(img, &TargetFormat::EncodedImage((format, quality)))?;
+
+    Ok(ComputedImage {
+      buffer: pixels.into(),
+      width,
+      height,
+    })
   }
 
   /// Asynchronously convert the transformed image to an encoded image Buffer

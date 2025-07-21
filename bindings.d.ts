@@ -62,6 +62,14 @@ export declare class ImageTransformer {
    * @param rotation - The amount to rotate by
    */
   rotate(rotation: RotationMode): this
+  /**
+   * Overlay another image on top of the current image
+   *
+   * @param other - The other image transformer to draw from
+   * @param x - X coordinate where to place the overlay
+   * @param y - Y coordinate where to place the overlay
+   */
+  overlay(other: ImageTransformer, x: number, y: number): this
   /** Get the current dimensions of the transformed image */
   getCurrentDimensions(): ImageInfo
   /**
