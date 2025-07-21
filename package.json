@@ -5,7 +5,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
-    "name": "julusian-image-rs",
+    "binaryName": "julusian-image-rs",
     "triples": {
       "additional": [
         "aarch64-pc-windows-msvc",
@@ -33,7 +33,7 @@
     "node": ">=18.18"
   },
   "scripts": {
-    "build": "napi build --platform --release --js-package-name @image-rs/target --js=false --dts bindings.d.ts --no-const-enum",
+    "build": "napi build --platform --release --js-package-name @image-rs/target --no-js --dts bindings.d.ts --no-const-enum",
     "build:debug": "napi build --platform",
     "test": "ava"
   },

@@ -8,7 +8,7 @@ use image::{
   DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, Pixel, RgbImage, Rgba,
   RgbaImage,
 };
-use napi::{bindgen_prelude::*, Env, Error, Status, Task};
+use napi::{Env, Error, Status, Task, bindgen_prelude::*};
 
 #[macro_use]
 extern crate napi_derive;
@@ -439,14 +439,13 @@ impl ImageTransformer {
     }
   }
 
-  /// Create an `ImageTransformer` from a `Uint8Array` containing raw pixel data
+  /// Create an `ImageTransformer` from a `Buffer` or `Uint8Array` containing an encoded image
   ///
-  /// @param image - The raw pixel data of the image
+  /// @param image - The encoded image to decode
   /// @returns An `ImageTransformer` instance
-  /// This method does not require width or height, as it will be determined from the pixel data
-  /// and the pixel format.
+  /// This method does not require width or height, as it will be determined from reading the image
   #[napi(factory)]
-  pub fn from_image(image: Uint8Array) -> napi::Result<Self> {
+  pub fn from_encoded_image(image: Uint8Array) -> napi::Result<Self> {
     let reader = ImageReader::new(Cursor::new(&image))
       .with_guessed_format()
       .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
