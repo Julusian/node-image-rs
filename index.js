@@ -1,3 +1,7 @@
-const bindings = require("./bindings");
+import * as bindings from "./bindings.js";
 
-module.exports.ImageTransformer = bindings.ImageTransformer;
+export const PixelFormat = bindings.PixelFormat;
+export const ImageFormat = bindings.ImageFormat;
+export const ResizeMode = bindings.ResizeMode;
+export const RotationMode = bindings.RotationMode;
+export const ImageTransformer = bindings.ImageTransformer;

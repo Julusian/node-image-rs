@@ -4,6 +4,7 @@
   "description": "Limited image-rs bindings for Node.js",
   "main": "index.js",
   "types": "index.d.ts",
+  "type": "module",
   "napi": {
     "binaryName": "julusian-image-rs",
     "triples": {
@@ -28,7 +29,7 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=18.18"
+    "node": ">=20.18"
   },
   "scripts": {
     "build": "napi build --platform --release --js-package-name @image-rs/target --no-js --dts bindings.d.ts --no-const-enum",

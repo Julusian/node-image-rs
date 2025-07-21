@@ -69,7 +69,7 @@ jobs:
             build: |
               yarn build --target armv7-unknown-linux-gnueabihf
               arm-linux-gnueabihf-strip *.node
-    name: stable - ${{ matrix.settings.target }} - node@18
+    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +77,7 @@ jobs:
         uses: actions/setup-node@v4
         if: ${{ !matrix.settings.docker }}
         with:
-          node-version: 18
+          node-version: 20
           check-latest: true
       - name: Install
         uses: dtolnay/rust-toolchain@stable
@@ -115,7 +115,7 @@ jobs:
         uses: actions/setup-node@v4
         if: matrix.settings.target == 'i686-pc-windows-msvc'
         with:
-          node-version: 18
+          node-version: 20
           check-latest: true
           architecture: x86
       - name: Build in docker
@@ -149,8 +149,9 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
         node:
-          - "18"
           - "20"
+          - "22"
+          - "24"
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v4
@@ -182,8 +183,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - "18"
           - "20"
+          - "22"
+          - "24"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -215,8 +217,9 @@ jobs:
       fail-fast: false
       matrix:
         node:
-          - "18"
           - "20"
+          - "22"
+          - "24"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -268,7 +271,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           check-latest: true
       - name: Install dependencies
         run: |
