@@ -71,11 +71,11 @@ fn load_image(
 ) -> Result<DynamicImage> {
   match format {
     Some(PixelFormat::rgba) => RgbaImage::from_raw(width, height, source_buffer.clone())
-      .and_then(|img| Some(DynamicImage::from(img)))
+      .map(DynamicImage::from)
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
     // PixelFormat::Argb => todo!(),
     Some(PixelFormat::rgb) => RgbImage::from_raw(width, height, source_buffer.clone())
-      .and_then(|img| Some(DynamicImage::from(img)))
+      .map(DynamicImage::from)
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
 
     None => {
@@ -88,12 +88,12 @@ fn load_image(
         .map_err(|_e| Error::new(Status::GenericFailure, "Failed to decode image from buffer"))?;
 
       if image.width() != width || image.height() != height {
-        return Err(Error::new(
+        Err(Error::new(
           Status::GenericFailure,
           "Image dimensions do not match specified width and height",
-        ));
+        ))
       } else {
-        return Ok(image);
+        Ok(image)
       }
     }
   }
@@ -230,7 +230,7 @@ fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
       .map_err(|e| {
         Error::new(
           Status::GenericFailure,
-          format!("Failed to encode image: {}", e),
+          format!("Failed to encode image: {e}"),
         )
       })?;
 
@@ -280,12 +280,7 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
         op.bottom,
         op.fill_color,
       )
-      .or_else(|_e| {
-        Err(Error::new(
-          Status::GenericFailure,
-          "Failed to perform pixel copy",
-        ))
-      })?
+      .map_err(|_e| Error::new(Status::GenericFailure, "Failed to perform pixel copy"))?
       .unwrap_or(img),
       TransformOps::FlipV => img.flipv(),
       TransformOps::FlipH => img.fliph(),
@@ -297,7 +292,7 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
       TransformOps::Overlay((other, x, y)) => overlay_image(img, other, *x, *y).map_err(|e| {
         Error::new(
           Status::GenericFailure,
-          format!("Failed to overlay image: {}", e),
+          format!("Failed to overlay image: {e}"),
         )
       })?,
     };
