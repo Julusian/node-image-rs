@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.0.0](https://github.com/Julusian/node-image-rs/compare/v1.1.1...v2.0.0) (2025-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* emit esm and update minimum nodejs to 20
+
+### Features
+
+* add methods for data-urls ([7d9be12](https://github.com/Julusian/node-image-rs/commit/7d9be12ffd17369483b1b36a5fe0da617d7813e2))
+* add overlap method ([9e70f57](https://github.com/Julusian/node-image-rs/commit/9e70f5766e15bd470c35961f802c45abf7b87ab1))
+* emit esm and update minimum nodejs to 20 ([1dfc37b](https://github.com/Julusian/node-image-rs/commit/1dfc37b66c0cd35b0b42a7273f865ef5d26c3bfa))
+* fixup internals ([6c884d4](https://github.com/Julusian/node-image-rs/commit/6c884d47a02103f444b46c872a50df770226baf7))
+* improved unit tests ([5185fe3](https://github.com/Julusian/node-image-rs/commit/5185fe335c270564222cbf21d55b7dcf975aeae5))
+* update napi-rs and add image encode/decode methods ([cc2a3f2](https://github.com/Julusian/node-image-rs/commit/cc2a3f289df9050dd5fb692cd394a99089b7e664))
+
+
+### Bug Fixes
+
+* bindings loading ([ef807f1](https://github.com/Julusian/node-image-rs/commit/ef807f165d44fe03bc72d85f3d63cde392661651))
+* casing of ImageFormat enum ([62cca91](https://github.com/Julusian/node-image-rs/commit/62cca9141d0934828481454c7af4ce595d1a95f4))
+* disable wasm build, as it is missing some portions ([00e796e](https://github.com/Julusian/node-image-rs/commit/00e796eae6404c088b3df617a9676f4d15b3fee8))
+
 ## [1.1.1](https://github.com/Julusian/node-image-rs/compare/v1.1.0...v1.1.1) (2024-08-15)
 
 
