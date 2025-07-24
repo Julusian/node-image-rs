@@ -27,9 +27,12 @@ pub enum PixelFormat {
 #[napi(string_enum)]
 #[derive(PartialEq, Clone, Copy)]
 pub enum ImageFormat {
-  Jpeg,
-  WebP,
-  Png,
+  #[allow(non_camel_case_types)]
+  jpeg,
+  #[allow(non_camel_case_types)]
+  webp,
+  #[allow(non_camel_case_types)]
+  png,
 }
 
 #[napi(string_enum)]
@@ -202,10 +205,10 @@ fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
       let mut cursor = Cursor::new(&mut bytes);
 
       match format {
-        ImageFormat::Png => {
+        ImageFormat::png => {
           img.write_with_encoder(image::codecs::png::PngEncoder::new(&mut cursor))
         }
-        ImageFormat::Jpeg => {
+        ImageFormat::jpeg => {
           let quality_u8 = quality
             .map(|q| (q * 100.0) as u8)
             .unwrap_or(75)
@@ -223,7 +226,7 @@ fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
             quality_u8,
           ))
         }
-        ImageFormat::WebP => {
+        ImageFormat::webp => {
           img.write_with_encoder(image::codecs::webp::WebPEncoder::new_lossless(&mut cursor))
         }
       }

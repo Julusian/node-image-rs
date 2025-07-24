@@ -114,9 +114,9 @@ export interface EncodingOptions {
   quality?: number
 }
 
-export type ImageFormat =  'Jpeg'|
-'WebP'|
-'Png';
+export type ImageFormat =  'jpeg'|
+'webp'|
+'png';
 
 export interface ImageInfo {
   width: number

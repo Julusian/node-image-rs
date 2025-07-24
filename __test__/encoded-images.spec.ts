@@ -19,7 +19,7 @@ it("toEncodedImageSync - PNG format verification", () => {
     size.height,
     "rgba"
   );
-  const result = transformer.toEncodedImageSync("Png");
+  const result = transformer.toEncodedImageSync("png");
 
   expect(Buffer.isBuffer(result.buffer)).toBe(true);
   expect(result.buffer.length).toBeGreaterThan(0);
@@ -45,7 +45,7 @@ it("toEncodedImageSync - JPEG format with RGBA", () => {
   );
 
   // Library should handle RGBA->RGB conversion internally for JPEG
-  const result = transformer.toEncodedImageSync("Jpeg", { quality: 0.8 });
+  const result = transformer.toEncodedImageSync("jpeg", { quality: 0.8 });
 
   expect(Buffer.isBuffer(result.buffer)).toBe(true);
   expect(result.buffer.length).toBeGreaterThan(0);
@@ -67,7 +67,7 @@ it("toEncodedImageSync - JPEG format verification with RGB", () => {
     size.height,
     "rgb"
   );
-  const result = transformer.toEncodedImageSync("Jpeg", { quality: 0.8 });
+  const result = transformer.toEncodedImageSync("jpeg", { quality: 0.8 });
 
   expect(Buffer.isBuffer(result.buffer)).toBe(true);
   expect(result.buffer.length).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ it("toEncodedImageSync - WebP format verification", () => {
     size.height,
     "rgba"
   );
-  const result = transformer.toEncodedImageSync("WebP", { quality: 0.9 });
+  const result = transformer.toEncodedImageSync("webp", { quality: 0.9 });
 
   expect(Buffer.isBuffer(result.buffer)).toBe(true);
   expect(result.buffer.length).toBeGreaterThan(0);
@@ -119,7 +119,7 @@ it("encoded image round trip - PNG", () => {
     size.height,
     "rgba"
   );
-  const encoded = transformer1.toEncodedImageSync("Png");
+  const encoded = transformer1.toEncodedImageSync("png");
 
   // Decode from PNG
   const transformer2 = ImageTransformer.fromEncodedImage(encoded.buffer);
@@ -146,13 +146,13 @@ it("JPEG quality levels produce different file sizes", () => {
     "rgba"
   );
 
-  const highQuality = transformer.toEncodedImageSync("Jpeg", {
+  const highQuality = transformer.toEncodedImageSync("jpeg", {
     quality: 0.95,
   });
-  const mediumQuality = transformer.toEncodedImageSync("Jpeg", {
+  const mediumQuality = transformer.toEncodedImageSync("jpeg", {
     quality: 0.5,
   });
-  const lowQuality = transformer.toEncodedImageSync("Jpeg", {
+  const lowQuality = transformer.toEncodedImageSync("jpeg", {
     quality: 0.1,
   });
 
@@ -178,7 +178,7 @@ it("toEncodedImage - async PNG encoding", async () => {
     size.height,
     "rgba"
   );
-  const result = await transformer.toEncodedImage("Png");
+  const result = await transformer.toEncodedImage("png");
 
   expect(Buffer.isBuffer(result.buffer)).toBe(true);
   expect(result.width).toBe(size.width);
