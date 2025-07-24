@@ -305,6 +305,20 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
   Ok(img)
 }
 
+fn create_data_url(format: ImageFormat, pixels: &Vec<u8>) -> String {
+  let base64_data = general_purpose::STANDARD.encode(pixels);
+
+  // Create the appropriate MIME type
+  let mime_type = match format {
+    ImageFormat::png => "image/png",
+    ImageFormat::jpeg => "image/jpeg",
+    ImageFormat::webp => "image/webp",
+  };
+
+  // Construct the data URL
+  format!("data:{mime_type};base64,{base64_data}")
+}
+
 enum TargetFormat {
   PixelBuffer(PixelFormat),
   EncodedImage((ImageFormat, Option<f64>)),
@@ -361,25 +375,13 @@ impl napi::Task for AsyncDataUrlTransform {
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
     let img = render_image(&self.spec)?;
+
     let pixels = encode_image(
       img,
       &TargetFormat::EncodedImage((self.format, self.quality)),
     )?;
 
-    // Convert to base64
-    let base64_data = general_purpose::STANDARD.encode(&pixels);
-
-    // Create the appropriate MIME type
-    let mime_type = match self.format {
-      ImageFormat::png => "image/png",
-      ImageFormat::jpeg => "image/jpeg",
-      ImageFormat::webp => "image/webp",
-    };
-
-    // Construct the data URL
-    let data_url = format!("data:{};base64,{}", mime_type, base64_data);
-
-    Ok(data_url)
+    Ok(create_data_url(self.format, &pixels))
   }
 
   fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
@@ -863,20 +865,7 @@ impl ImageTransformer {
     let img = render_image(&self.transformer)?;
     let pixels = encode_image(img, &TargetFormat::EncodedImage((format, quality)))?;
 
-    // Convert to base64
-    let base64_data = general_purpose::STANDARD.encode(&pixels);
-
-    // Create the appropriate MIME type
-    let mime_type = match format {
-      ImageFormat::png => "image/png",
-      ImageFormat::jpeg => "image/jpeg",
-      ImageFormat::webp => "image/webp",
-    };
-
-    // Construct the data URL
-    let data_url = format!("data:{};base64,{}", mime_type, base64_data);
-
-    Ok(data_url)
+    Ok(create_data_url(format, &pixels))
   }
 
   /// Asynchronously convert the transformed image to a data URL string
