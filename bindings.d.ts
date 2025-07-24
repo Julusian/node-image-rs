@@ -19,6 +19,14 @@ export declare class ImageTransformer {
    */
   static fromEncodedImage(image: Uint8Array): ImageTransformer
   /**
+   * Create an `ImageTransformer` from a data URL string (e.g., "data:image/png;base64,...")
+   *
+   * @param data_url - The data URL string containing the encoded image
+   * @returns An `ImageTransformer` instance
+   * This method parses the data URL, extracts the base64 data, and decodes the image
+   */
+  static fromImageDataUrl(dataUrl: string): ImageTransformer
+  /**
    * Add a scale step to the transform sequence
    *
    * @param width - Target width for the image
@@ -102,6 +110,22 @@ export declare class ImageTransformer {
    * @param options - Optional encoding options
    */
   toEncodedImage(format: ImageFormat, options?: EncodingOptions | undefined | null): Promise<ComputedImage>
+  /**
+   * Convert the transformed image to a data URL string
+   *
+   * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toDataUrl` whenever possible
+   *
+   * @param format - The image format to encode
+   * @param options - Optional encoding options
+   */
+  toDataUrlSync(format: ImageFormat, options?: EncodingOptions | undefined | null): string
+  /**
+   * Asynchronously convert the transformed image to a data URL string
+   *
+   * @param format - The image format to encode
+   * @param options - Optional encoding options
+   */
+  toDataUrl(format: ImageFormat, options?: EncodingOptions | undefined | null): Promise<string>
 }
 
 export interface ComputedImage {

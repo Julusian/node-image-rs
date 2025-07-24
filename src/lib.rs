@@ -5,6 +5,7 @@ mod image_rs_copy;
 use std::io::Cursor;
 use std::sync::Arc;
 
+use base64::{Engine as _, engine::general_purpose};
 use image::{
   DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, Pixel, RgbImage, Rgba,
   RgbaImage, imageops::overlay,
@@ -348,6 +349,44 @@ impl napi::Task for AsyncTransform {
   }
 }
 
+pub struct AsyncDataUrlTransform {
+  spec: TransformSpec,
+  format: ImageFormat,
+  quality: Option<f64>,
+}
+
+impl napi::Task for AsyncDataUrlTransform {
+  type Output = String;
+  type JsValue = String;
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    let img = render_image(&self.spec)?;
+    let pixels = encode_image(
+      img,
+      &TargetFormat::EncodedImage((self.format, self.quality)),
+    )?;
+
+    // Convert to base64
+    let base64_data = general_purpose::STANDARD.encode(&pixels);
+
+    // Create the appropriate MIME type
+    let mime_type = match self.format {
+      ImageFormat::png => "image/png",
+      ImageFormat::jpeg => "image/jpeg",
+      ImageFormat::webp => "image/webp",
+    };
+
+    // Construct the data URL
+    let data_url = format!("data:{};base64,{}", mime_type, base64_data);
+
+    Ok(data_url)
+  }
+
+  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+    Ok(output)
+  }
+}
+
 #[derive(Clone)]
 pub struct ScaleOp {
   width: u32,
@@ -498,6 +537,71 @@ impl ImageTransformer {
     Ok(ImageTransformer {
       transformer: TransformSpec {
         buffer: Arc::new(image.to_vec()),
+        width: dimensions.0,
+        height: dimensions.1,
+        format: None,
+        ops: Vec::new(),
+      },
+    })
+  }
+
+  /// Create an `ImageTransformer` from a data URL string (e.g., "data:image/png;base64,...")
+  ///
+  /// @param data_url - The data URL string containing the encoded image
+  /// @returns An `ImageTransformer` instance
+  /// This method parses the data URL, extracts the base64 data, and decodes the image
+  #[napi(factory)]
+  pub fn from_image_data_url(data_url: String) -> napi::Result<Self> {
+    // Parse the data URL format: data:[<mediatype>][;base64],<data>
+    if !data_url.starts_with("data:") {
+      return Err(Error::new(
+        Status::GenericFailure,
+        "Invalid data URL format: must start with 'data:'",
+      ));
+    }
+
+    // Find the comma that separates the header from the data
+    let comma_pos = data_url.find(',').ok_or_else(|| {
+      Error::new(
+        Status::GenericFailure,
+        "Invalid data URL format: missing comma separator",
+      )
+    })?;
+
+    let header = &data_url[5..comma_pos]; // Skip "data:" prefix
+    let data_part = &data_url[comma_pos + 1..];
+
+    // Check if it's base64 encoded
+    if !header.contains("base64") {
+      return Err(Error::new(
+        Status::GenericFailure,
+        "Only base64-encoded data URLs are supported",
+      ));
+    }
+
+    // Decode the base64 data
+    let image_data = general_purpose::STANDARD.decode(data_part).map_err(|_e| {
+      Error::new(
+        Status::GenericFailure,
+        "Failed to decode base64 data from data URL",
+      )
+    })?;
+
+    // Use the existing from_encoded_image logic
+    let reader = ImageReader::new(Cursor::new(&image_data))
+      .with_guessed_format()
+      .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
+
+    let dimensions = reader.into_dimensions().map_err(|_e| {
+      Error::new(
+        Status::GenericFailure,
+        "Failed to determine image dimensions",
+      )
+    })?;
+
+    Ok(ImageTransformer {
+      transformer: TransformSpec {
+        buffer: Arc::new(image_data),
         width: dimensions.0,
         height: dimensions.1,
         format: None,
@@ -736,6 +840,61 @@ impl ImageTransformer {
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: TargetFormat::EncodedImage((format, quality)),
+    };
+
+    Ok(AsyncTask::new(task))
+  }
+
+  /// Convert the transformed image to a data URL string
+  ///
+  /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toDataUrl` whenever possible
+  ///
+  /// @param format - The image format to encode
+  /// @param options - Optional encoding options
+  #[napi]
+  pub fn to_data_url_sync(
+    &self,
+    _env: Env,
+    format: ImageFormat,
+    options: Option<EncodingOptions>,
+  ) -> napi::Result<String> {
+    let quality = options.as_ref().and_then(|opts| opts.quality);
+
+    let img = render_image(&self.transformer)?;
+    let pixels = encode_image(img, &TargetFormat::EncodedImage((format, quality)))?;
+
+    // Convert to base64
+    let base64_data = general_purpose::STANDARD.encode(&pixels);
+
+    // Create the appropriate MIME type
+    let mime_type = match format {
+      ImageFormat::png => "image/png",
+      ImageFormat::jpeg => "image/jpeg",
+      ImageFormat::webp => "image/webp",
+    };
+
+    // Construct the data URL
+    let data_url = format!("data:{};base64,{}", mime_type, base64_data);
+
+    Ok(data_url)
+  }
+
+  /// Asynchronously convert the transformed image to a data URL string
+  ///
+  /// @param format - The image format to encode
+  /// @param options - Optional encoding options
+  #[napi(ts_return_type = "Promise<string>")]
+  pub fn to_data_url(
+    &self,
+    _env: Env,
+    format: ImageFormat,
+    options: Option<EncodingOptions>,
+  ) -> napi::Result<AsyncTask<AsyncDataUrlTransform>> {
+    let quality = options.as_ref().and_then(|opts| opts.quality);
+    let task = AsyncDataUrlTransform {
+      spec: self.transformer.clone(),
+      format,
+      quality,
     };
 
     Ok(AsyncTask::new(task))
