@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/Julusian/node-image-rs/compare/v2.0.0...v2.0.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* strip npm package ([cc9e98b](https://github.com/Julusian/node-image-rs/commit/cc9e98b5d78507e7e882b49e09fc5564f7bcb3fb))
+* usage with webpack ([28dd6fe](https://github.com/Julusian/node-image-rs/commit/28dd6fee2e822e299d797b0efb3d9d4d61d30e33))
+
 ## [2.0.0](https://github.com/Julusian/node-image-rs/compare/v1.1.1...v2.0.0) (2025-07-24)
 
 
