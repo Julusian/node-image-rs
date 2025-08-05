@@ -36,5 +36,10 @@
     "build:debug": "napi build --platform",
     "test": "vitest"
   },
+  "files": [
+    "prebuilds",
+    "*.js",
+    "*.d.ts"
+  ],
   "packageManager": "yarn@4.9.2"
 }
