@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/Julusian/node-image-rs/compare/v2.0.1...v2.0.2) (2025-08-24)
+
+
+### Bug Fixes
+
+* incorrect type re-export ([8745408](https://github.com/Julusian/node-image-rs/commit/874540860eee8840817aeff055232af3e60445e5))
+
 ## [2.0.1](https://github.com/Julusian/node-image-rs/compare/v2.0.0...v2.0.1) (2025-08-05)
 
 
