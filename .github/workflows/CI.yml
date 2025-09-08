@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Install
@@ -222,7 +222,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
           architecture: ${{ matrix.settings.architecture }}
@@ -260,7 +260,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
       - name: Output docker params
@@ -319,7 +319,7 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v5
   #     - name: Setup node
-  #       uses: actions/setup-node@v4
+  #       uses: actions/setup-node@v5
   #       with:
   #         node-version: 22
   #     - name: Install dependencies
@@ -358,7 +358,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           check-latest: true
