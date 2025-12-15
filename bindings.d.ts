@@ -148,7 +148,9 @@ export interface ImageInfo {
 }
 
 export type PixelFormat =  'rgba'|
-'rgb';
+'rgb'|
+'bgra'|
+'bgr';
 
 export type ResizeMode =  'Exact'|
 'Fill'|

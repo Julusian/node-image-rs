@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use base64::{Engine as _, engine::general_purpose};
 use image::{
-  DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, Pixel, RgbImage, Rgba,
-  RgbaImage, imageops::overlay,
+  DynamicImage, GenericImage, ImageBuffer, ImageReader, ImageResult, RgbImage, Rgba, RgbaImage,
+  imageops::overlay,
 };
 use napi::{Env, Error, Status, bindgen_prelude::*};
 
@@ -22,7 +22,10 @@ pub enum PixelFormat {
   rgba,
   #[allow(non_camel_case_types)]
   rgb,
-  // Argb,
+  #[allow(non_camel_case_types)]
+  bgra,
+  #[allow(non_camel_case_types)]
+  bgr,
 }
 
 #[napi(string_enum)]
@@ -81,6 +84,22 @@ fn load_image(
     Some(PixelFormat::rgb) => RgbImage::from_raw(width, height, source_buffer.clone())
       .map(DynamicImage::from)
       .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer")),
+
+    Some(PixelFormat::bgra) => {
+      let mut cloned = source_buffer.clone();
+      swizzle_32(&mut cloned);
+      return RgbaImage::from_raw(width, height, cloned)
+        .map(DynamicImage::from)
+        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"));
+    }
+    // PixelFormat::Argb => todo!(),
+    Some(PixelFormat::bgr) => {
+      let mut cloned = source_buffer.clone();
+      swizzle_24(&mut cloned);
+      return RgbImage::from_raw(width, height, cloned)
+        .map(DynamicImage::from)
+        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"));
+    }
 
     None => {
       let reader = ImageReader::new(Cursor::new(source_buffer))
@@ -148,7 +167,6 @@ fn crop_image(
 
 fn pad_image(
   img: &DynamicImage,
-  target_format: &TargetFormat,
   left: u32,
   right: u32,
   top: u32,
@@ -163,21 +181,8 @@ fn pad_image(
   let width = img.width() + left + right;
   let height = img.height() + top + bottom;
 
-  // Create the padded image in target_format space, in the hope that we can avoid an extra conversion
-  let mut padded = match target_format {
-    TargetFormat::PixelBuffer(PixelFormat::rgb) => {
-      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgb()))
-    }
-    TargetFormat::PixelBuffer(PixelFormat::rgba) => {
-      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
-    }
-    TargetFormat::EncodedImage(_) => {
-      // For encoded images, we create a blank RGBA image and convert it later
-      DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color.to_rgba()))
-    }
-  };
-
-  // let mut padded = DynamicImage::new_rgba8(img.width() + left + right, img.height() + top + bottom);
+  // Create the padded image in intermediary rgba
+  let mut padded = DynamicImage::from(ImageBuffer::from_pixel(width, height, fill_color));
   padded.copy_from(img, left, top)?;
   Ok(Some(padded))
 }
@@ -197,10 +202,33 @@ fn overlay_image(
   Ok(img)
 }
 
+// TODO - investigate performance
+fn swizzle_24(data: &mut [u8]) {
+  for chunk in data.chunks_exact_mut(3) {
+    chunk.swap(0, 2);
+  }
+}
+// TODO - investigate performance
+fn swizzle_32(data: &mut [u8]) {
+  for chunk in data.chunks_exact_mut(4) {
+    chunk.swap(0, 2);
+  }
+}
+
 fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
   match format {
     TargetFormat::PixelBuffer(PixelFormat::rgba) => Ok(img.into_rgba8().into_vec()),
     TargetFormat::PixelBuffer(PixelFormat::rgb) => Ok(img.into_rgb8().into_vec()),
+    TargetFormat::PixelBuffer(PixelFormat::bgra) => {
+      let mut data = img.into_rgba8().into_vec();
+      swizzle_32(&mut data);
+      Ok(data)
+    }
+    TargetFormat::PixelBuffer(PixelFormat::bgr) => {
+      let mut data = img.into_rgb8().into_vec();
+      swizzle_24(&mut data);
+      Ok(data)
+    }
     TargetFormat::EncodedImage((format, quality)) => {
       let mut bytes: Vec<u8> = Vec::new();
       let mut cursor = Cursor::new(&mut bytes);
@@ -275,17 +303,9 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
         crop_image(&img, op.width, op.height, Some((op.x, op.y)))?.unwrap_or(img)
       }
       TransformOps::CropCenter(op) => crop_image(&img, op.width, op.height, None)?.unwrap_or(img),
-      TransformOps::Pad(op) => pad_image(
-        &img,
-        &TargetFormat::PixelBuffer(PixelFormat::rgba), // Use RGBA for intermediate compositing
-        op.left,
-        op.right,
-        op.top,
-        op.bottom,
-        op.fill_color,
-      )
-      .map_err(|_e| Error::new(Status::GenericFailure, "Failed to perform pixel copy"))?
-      .unwrap_or(img),
+      TransformOps::Pad(op) => pad_image(&img, op.left, op.right, op.top, op.bottom, op.fill_color)
+        .map_err(|_e| Error::new(Status::GenericFailure, "Failed to perform pixel copy"))?
+        .unwrap_or(img),
       TransformOps::FlipV => img.flipv(),
       TransformOps::FlipH => img.fliph(),
       TransformOps::Rotate(mode) => match mode {
