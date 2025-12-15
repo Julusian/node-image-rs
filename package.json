@@ -7,14 +7,15 @@
   "type": "module",
   "napi": {
     "binaryName": "julusian-image-rs",
-    "triples": {
-      "additional": [
-        "aarch64-pc-windows-msvc",
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "armv7-unknown-linux-gnueabihf"
-      ]
-    }
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc",
+      "x86_64-apple-darwin",
+      "aarch64-pc-windows-msvc",
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "armv7-unknown-linux-gnueabihf"
+    ]
   },
   "license": "MIT",
   "repository": {
@@ -22,11 +23,11 @@
     "url": "https://github.com/Julusian/node-image-rs"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.0.4",
-    "@types/node": "^20.19.9",
-    "prettier": "^3.6.2",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "@napi-rs/cli": "^3.5.0",
+    "@types/node": "^20.19.27",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
   },
   "engines": {
     "node": ">=20.18"
