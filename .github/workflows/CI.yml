@@ -118,7 +118,7 @@ jobs:
             .cargo-cache
             target/
           key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: mlugg/setup-zig@v2
         if: ${{ contains(matrix.settings.target, 'musl') }}
         with:
           version: 0.14.1
@@ -161,7 +161,7 @@ jobs:
           RUSTUP_IO_THREADS: 1
         with:
           operating_system: freebsd
-          version: "14.2"
+          version: "14.3"
           memory: 8G
           cpu_count: 3
           environment_variables: "DEBUG RUSTUP_IO_THREADS"
