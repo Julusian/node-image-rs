@@ -379,12 +379,10 @@ jobs:
         run: |
           if git log -1 --pretty=%B | grep "release [0-9]\+\.[0-9]\+\.[0-9]\+ ";
           then
-            npm publish --access public --provenance
+            yarn npm publish --access public --provenance
           elif git log -1 --pretty=%B | grep "^v[0-9]\+\.[0-9]\+\.[0-9]\+";
           then
-            npm publish --tag next --access public --provenance
+            yarn npm publish --tag next --access public --provenance
           else
             echo "Not a release, skipping publish"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
