@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/Julusian/node-image-rs/compare/v2.1.0...v2.1.1) (2025-12-15)
+
+
+### Bug Fixes
+
+* publish ([3308fc9](https://github.com/Julusian/node-image-rs/commit/3308fc9931a93fc2caa4555fea1180d829b83d50))
+
 ## [2.1.0](https://github.com/Julusian/node-image-rs/compare/v2.0.2...v2.1.0) (2025-12-15)
 
 
