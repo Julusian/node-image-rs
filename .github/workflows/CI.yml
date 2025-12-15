@@ -377,7 +377,6 @@ jobs:
         shell: bash
       - name: Publish
         run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
           if git log -1 --pretty=%B | grep "release [0-9]\+\.[0-9]\+\.[0-9]\+ ";
           then
             npm publish --access public --provenance
@@ -389,4 +388,3 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
