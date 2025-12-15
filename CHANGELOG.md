@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/Julusian/node-image-rs/compare/v2.0.2...v2.1.0) (2025-12-15)
+
+
+### Features
+
+* support bgr and bgra ([56b9d18](https://github.com/Julusian/node-image-rs/commit/56b9d18a50bc3041367cf50c5357ded084b9c1ed))
+
 ## [2.0.2](https://github.com/Julusian/node-image-rs/compare/v2.0.1...v2.0.2) (2025-08-24)
 
 
