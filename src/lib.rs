@@ -88,17 +88,17 @@ fn load_image(
     Some(PixelFormat::bgra) => {
       let mut cloned = source_buffer.clone();
       swizzle_32(&mut cloned);
-      return RgbaImage::from_raw(width, height, cloned)
+      RgbaImage::from_raw(width, height, cloned)
         .map(DynamicImage::from)
-        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"));
+        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"))
     }
     // PixelFormat::Argb => todo!(),
     Some(PixelFormat::bgr) => {
       let mut cloned = source_buffer.clone();
       swizzle_24(&mut cloned);
-      return RgbImage::from_raw(width, height, cloned)
+      RgbImage::from_raw(width, height, cloned)
         .map(DynamicImage::from)
-        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"));
+        .ok_or_else(|| Error::new(Status::GenericFailure, "Invalid pixel buffer"))
     }
 
     None => {
