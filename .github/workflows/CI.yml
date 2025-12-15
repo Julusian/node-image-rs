@@ -231,7 +231,7 @@ jobs:
           corepack enable
           yarn install
       - name: Download artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: .
@@ -289,7 +289,7 @@ jobs:
           yarn config set --json supportedArchitectures.libc '["current", "musl", "gnu"]'
           yarn install
       - name: Download artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: bindings-${{ matrix.target }}
           path: .
@@ -328,7 +328,7 @@ jobs:
   #         # yarn config set supportedArchitectures.cpu "wasm32"
   #         yarn install
   #     - name: Download artifacts
-  #       uses: actions/download-artifact@v6
+  #       uses: actions/download-artifact@v7
   #       with:
   #         name: bindings-wasm32-wasip1-threads
   #         path: .
@@ -367,7 +367,7 @@ jobs:
           corepack enable
           yarn install
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
       - name: Move artifacts
