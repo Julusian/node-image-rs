@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.2](https://github.com/Julusian/node-image-rs/compare/v2.1.1...v2.1.2) (2026-06-29)
+
+
+### Bug Fixes
+
+* improve reporting on memory usage ([a43b775](https://github.com/Julusian/node-image-rs/commit/a43b775bdf5c9ea2b1343f0d47c86a4b8d5de058))
+* performance tweaks ([da53fc0](https://github.com/Julusian/node-image-rs/commit/da53fc0dfbd94fd658774d18aef9a41e97f07edc))
+* try to avoid holding buffer ref ([83151e9](https://github.com/Julusian/node-image-rs/commit/83151e9a187966284d9369a2d14495cb7cd34f28))
+
 ## [2.1.1](https://github.com/Julusian/node-image-rs/compare/v2.1.0...v2.1.1) (2025-12-15)
 
 
