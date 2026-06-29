@@ -533,10 +533,54 @@ pub struct EncodingOptions {
   pub quality: Option<f64>,
 }
 
-#[napi]
+#[napi(custom_finalize)]
 pub struct ImageTransformer {
   transformer: TransformSpec,
+  /// Bytes of native memory this instance reported to V8 via `adjust_external_memory`
+  /// at construction. The same amount is subtracted again in `ObjectFinalize`.
+  external_size: i64,
 }
+
+impl ObjectFinalize for ImageTransformer {
+  fn finalize(self, env: Env) -> napi::Result<()> {
+    if self.external_size != 0 {
+      env.adjust_external_memory(-self.external_size)?;
+    }
+    Ok(())
+  }
+}
+
+impl ImageTransformer {
+  /// Build a transformer while informing V8 of the native memory it retains.
+  ///
+  /// Each `ImageTransformer` keeps a full copy of its source image in an
+  /// `Arc<Vec<u8>>`, but the JS wrapper object is tiny. Without telling V8 about
+  /// the retained bytes, its GC never feels pressure and many transformers can
+  /// accumulate under load, ballooning RSS even though the memory is reclaimable.
+  /// `adjust_external_memory` makes that memory visible so the GC collects them.
+  fn new_tracked(
+    env: &Env,
+    buffer: Vec<u8>,
+    width: u32,
+    height: u32,
+    format: Option<PixelFormat>,
+  ) -> napi::Result<Self> {
+    let external_size = buffer.len() as i64;
+    env.adjust_external_memory(external_size)?;
+
+    Ok(ImageTransformer {
+      transformer: TransformSpec {
+        buffer: Arc::new(buffer),
+        width,
+        height,
+        format,
+        ops: Vec::new(),
+      },
+      external_size,
+    })
+  }
+}
+
 #[napi]
 impl ImageTransformer {
   /// Create an `ImageTransformer` from a `Buffer` or `Uint8Array`
@@ -546,16 +590,14 @@ impl ImageTransformer {
   /// @param height - Height of the image
   /// @param format - Pixel format of the buffer
   #[napi(factory)]
-  pub fn from_buffer(buffer: &[u8], width: u32, height: u32, format: PixelFormat) -> Self {
-    ImageTransformer {
-      transformer: TransformSpec {
-        buffer: Arc::new(buffer.to_vec()),
-        width,
-        height,
-        format: Some(format),
-        ops: Vec::new(),
-      },
-    }
+  pub fn from_buffer(
+    env: Env,
+    buffer: &[u8],
+    width: u32,
+    height: u32,
+    format: PixelFormat,
+  ) -> napi::Result<Self> {
+    Self::new_tracked(&env, buffer.to_vec(), width, height, Some(format))
   }
 
   /// Create an `ImageTransformer` from a `Buffer` or `Uint8Array` containing an encoded image
@@ -564,7 +606,7 @@ impl ImageTransformer {
   /// @returns An `ImageTransformer` instance
   /// This method does not require width or height, as it will be determined from reading the image
   #[napi(factory)]
-  pub fn from_encoded_image(image: &[u8]) -> napi::Result<Self> {
+  pub fn from_encoded_image(env: Env, image: &[u8]) -> napi::Result<Self> {
     let reader = ImageReader::new(Cursor::new(image))
       .with_guessed_format()
       .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
@@ -576,15 +618,7 @@ impl ImageTransformer {
       )
     })?;
 
-    Ok(ImageTransformer {
-      transformer: TransformSpec {
-        buffer: Arc::new(image.to_vec()),
-        width: dimensions.0,
-        height: dimensions.1,
-        format: None,
-        ops: Vec::new(),
-      },
-    })
+    Self::new_tracked(&env, image.to_vec(), dimensions.0, dimensions.1, None)
   }
 
   /// Create an `ImageTransformer` from a data URL string (e.g., "data:image/png;base64,...")
@@ -593,7 +627,7 @@ impl ImageTransformer {
   /// @returns An `ImageTransformer` instance
   /// This method parses the data URL, extracts the base64 data, and decodes the image
   #[napi(factory)]
-  pub fn from_image_data_url(data_url: String) -> napi::Result<Self> {
+  pub fn from_image_data_url(env: Env, data_url: String) -> napi::Result<Self> {
     // Parse the data URL format: data:[<mediatype>][;base64],<data>
     if !data_url.starts_with("data:") {
       return Err(Error::new(
@@ -641,15 +675,7 @@ impl ImageTransformer {
       )
     })?;
 
-    Ok(ImageTransformer {
-      transformer: TransformSpec {
-        buffer: Arc::new(image_data),
-        width: dimensions.0,
-        height: dimensions.1,
-        format: None,
-        ops: Vec::new(),
-      },
-    })
+    Self::new_tracked(&env, image_data, dimensions.0, dimensions.1, None)
   }
 
   /// Add a scale step to the transform sequence
