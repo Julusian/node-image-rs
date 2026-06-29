@@ -526,7 +526,7 @@ impl ImageTransformer {
   /// @param height - Height of the image
   /// @param format - Pixel format of the buffer
   #[napi(factory)]
-  pub fn from_buffer(buffer: Uint8Array, width: u32, height: u32, format: PixelFormat) -> Self {
+  pub fn from_buffer(buffer: &[u8], width: u32, height: u32, format: PixelFormat) -> Self {
     ImageTransformer {
       transformer: TransformSpec {
         buffer: Arc::new(buffer.to_vec()),
@@ -544,8 +544,8 @@ impl ImageTransformer {
   /// @returns An `ImageTransformer` instance
   /// This method does not require width or height, as it will be determined from reading the image
   #[napi(factory)]
-  pub fn from_encoded_image(image: Uint8Array) -> napi::Result<Self> {
-    let reader = ImageReader::new(Cursor::new(&image))
+  pub fn from_encoded_image(image: &[u8]) -> napi::Result<Self> {
+    let reader = ImageReader::new(Cursor::new(image))
       .with_guessed_format()
       .map_err(|_e| Error::new(Status::GenericFailure, "Failed to determine image format"))?;
 

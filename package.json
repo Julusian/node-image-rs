@@ -23,11 +23,11 @@
     "url": "https://github.com/Julusian/node-image-rs"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.5.0",
-    "@types/node": "^20.19.27",
-    "prettier": "^3.7.4",
+    "@napi-rs/cli": "^3.7.2",
+    "@types/node": "^20.19.43",
+    "prettier": "^3.9.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": ">=20.18"
