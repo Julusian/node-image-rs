@@ -101,7 +101,7 @@ function requireNative() {
       }
     } else {
       loadErrors.push(
-        new Error(`Unsupported architecture on Android ${process.arch}`)
+        new Error(`Unsupported architecture on Android ${process.arch}`),
       );
     }
   } else if (process.platform === "win32") {
@@ -125,7 +125,7 @@ function requireNative() {
       }
     } else {
       loadErrors.push(
-        new Error(`Unsupported architecture on Windows: ${process.arch}`)
+        new Error(`Unsupported architecture on Windows: ${process.arch}`),
       );
     }
   } else if (process.platform === "darwin") {
@@ -143,7 +143,7 @@ function requireNative() {
       }
     } else {
       loadErrors.push(
-        new Error(`Unsupported architecture on macOS: ${process.arch}`)
+        new Error(`Unsupported architecture on macOS: ${process.arch}`),
       );
     }
   } else if (process.platform === "freebsd") {
@@ -161,7 +161,7 @@ function requireNative() {
       }
     } else {
       loadErrors.push(
-        new Error(`Unsupported architecture on FreeBSD: ${process.arch}`)
+        new Error(`Unsupported architecture on FreeBSD: ${process.arch}`),
       );
     }
   } else if (process.platform === "linux") {
@@ -235,14 +235,14 @@ function requireNative() {
       }
     } else {
       loadErrors.push(
-        new Error(`Unsupported architecture on Linux: ${process.arch}`)
+        new Error(`Unsupported architecture on Linux: ${process.arch}`),
       );
     }
   } else {
     loadErrors.push(
       new Error(
-        `Unsupported OS: ${process.platform}, architecture: ${process.arch}`
-      )
+        `Unsupported OS: ${process.platform}, architecture: ${process.arch}`,
+      ),
     );
   }
 }

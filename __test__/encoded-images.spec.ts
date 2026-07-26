@@ -17,7 +17,7 @@ it("toEncodedImageSync - PNG format verification", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.toEncodedImageSync("png");
 
@@ -41,7 +41,7 @@ it("toEncodedImageSync - JPEG format with RGBA", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
 
   // Library should handle RGBA->RGB conversion internally for JPEG
@@ -65,7 +65,7 @@ it("toEncodedImageSync - JPEG format verification with RGB", () => {
     buffer,
     size.width,
     size.height,
-    "rgb"
+    "rgb",
   );
   const result = transformer.toEncodedImageSync("jpeg", { quality: 0.8 });
 
@@ -87,7 +87,7 @@ it("toEncodedImageSync - WebP format verification", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.toEncodedImageSync("webp", { quality: 0.9 });
 
@@ -117,7 +117,7 @@ it("encoded image round trip - PNG", () => {
     original,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const encoded = transformer1.toEncodedImageSync("png");
 
@@ -143,7 +143,7 @@ it("JPEG quality levels produce different file sizes", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
 
   const highQuality = transformer.toEncodedImageSync("jpeg", {
@@ -158,7 +158,7 @@ it("JPEG quality levels produce different file sizes", () => {
 
   // Higher quality should generally produce larger files
   expect(highQuality.buffer.length).toBeGreaterThan(
-    mediumQuality.buffer.length
+    mediumQuality.buffer.length,
   );
   expect(mediumQuality.buffer.length).toBeGreaterThan(lowQuality.buffer.length);
 
@@ -176,7 +176,7 @@ it("toEncodedImage - async PNG encoding", async () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = await transformer.toEncodedImage("png");
 
@@ -195,7 +195,7 @@ it("fromImageDataUrl - valid PNG data URL", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const pngResult = transformer.toEncodedImageSync("png");
 
@@ -221,7 +221,7 @@ it("fromImageDataUrl - valid JPEG data URL", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const jpegResult = transformer.toEncodedImageSync("jpeg", { quality: 0.9 });
 
@@ -247,7 +247,7 @@ it("fromImageDataUrl - valid WebP data URL", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const webpResult = transformer.toEncodedImageSync("webp");
 
@@ -273,7 +273,7 @@ it("fromImageDataUrl - transformation chain works", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const pngResult = transformer.toEncodedImageSync("png");
 
@@ -313,7 +313,7 @@ it("fromImageDataUrl - non-base64 data URL", () => {
 it("fromImageDataUrl - invalid base64 data", () => {
   expect(() => {
     ImageTransformer.fromImageDataUrl(
-      "data:image/png;base64,invalid-base64!!!"
+      "data:image/png;base64,invalid-base64!!!",
     );
   }).toThrow("Failed to decode base64 data from data URL");
 });
@@ -336,7 +336,7 @@ it("fromImageDataUrl - round-trip conversion preserves image data", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const originalResult = original.toBufferSync("rgba");
 
@@ -362,14 +362,14 @@ it("fromImageDataUrl - different MIME types in header", () => {
     size.height,
     100,
     150,
-    200
+    200,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
 
   // Test with different MIME types
@@ -401,7 +401,7 @@ it("fromImageDataUrl - whitespace handling", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const pngResult = transformer.toEncodedImageSync("png");
   const base64Data = pngResult.buffer.toString("base64");
@@ -425,7 +425,7 @@ it("toDataUrlSync - PNG format", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const dataUrl = transformer.toDataUrlSync("png");
 
@@ -449,7 +449,7 @@ it("toDataUrlSync - JPEG format with quality", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const dataUrl = transformer.toDataUrlSync("jpeg", { quality: 0.9 });
 
@@ -472,7 +472,7 @@ it("toDataUrlSync - WebP format", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const dataUrl = transformer.toDataUrlSync("webp");
 
@@ -495,7 +495,7 @@ it("toDataUrl - async PNG format", async () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const dataUrl = await transformer.toDataUrl("png");
 
@@ -518,7 +518,7 @@ it("toDataUrl - async JPEG format", async () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const dataUrl = await transformer.toDataUrl("jpeg", { quality: 0.8 });
 
@@ -541,7 +541,7 @@ it("toDataUrlSync - transformation chain with data URL output", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   )
     .scale(10, 10, "Exact")
     .crop(2, 2, 6, 6)
@@ -568,7 +568,7 @@ it("toDataUrlSync vs toEncodedImageSync - equivalent output", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
 
   // Get data URL
@@ -591,7 +591,7 @@ it("data URL round trip - complete cycle", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const firstDataUrl = original.toDataUrlSync("png");
 

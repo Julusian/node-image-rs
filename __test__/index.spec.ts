@@ -27,7 +27,7 @@ it("ImageTransformer.fromBuffer - valid RGBA buffer", () => {
       buffer,
       width,
       height,
-      "rgba"
+      "rgba",
     );
     const result = transformer.toBufferSync("rgba");
     expect(result.width).toBe(width);
@@ -44,7 +44,7 @@ it("ImageTransformer.fromBuffer - valid RGB buffer", () => {
       buffer,
       width,
       height,
-      "rgb"
+      "rgb",
     );
     const result = transformer.toBufferSync("rgb");
     expect(result.width).toBe(width);
@@ -59,7 +59,7 @@ it("ImageTransformer.fromBuffer - invalid buffer size", () => {
 
   expect(() => {
     ImageTransformer.fromBuffer(buffer, width, height, "rgba").toBufferSync(
-      "rgba"
+      "rgba",
     );
   }).toThrow();
 });
@@ -73,14 +73,14 @@ it("scale - upscale exact", () => {
     original.height,
     255,
     0,
-    0
+    0,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .scale(target.width, target.height, "Exact")
@@ -95,7 +95,7 @@ it("scale - upscale exact", () => {
     target.height,
     255,
     0,
-    0
+    0,
   );
   assertImagesSimilar(
     result.buffer,
@@ -103,7 +103,7 @@ it("scale - upscale exact", () => {
     target.width,
     target.height,
     "rgba",
-    5
+    5,
   );
 });
 
@@ -115,14 +115,14 @@ it("scale - downscale exact", () => {
     original.height,
     0,
     255,
-    0
+    0,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .scale(target.width, target.height, "Exact")
@@ -137,7 +137,7 @@ it("scale - downscale exact", () => {
     target.height,
     0,
     255,
-    0
+    0,
   );
   assertImagesSimilar(
     result.buffer,
@@ -145,7 +145,7 @@ it("scale - downscale exact", () => {
     target.width,
     target.height,
     "rgba",
-    5
+    5,
   );
 });
 
@@ -158,7 +158,7 @@ it("scale - aspect ratio modes", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
 
   // Test different resize modes
@@ -173,7 +173,7 @@ it("scale - aspect ratio modes", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const fitResult = transformer2
     .scale(target.width, target.height, "Fit")
@@ -196,7 +196,7 @@ it("crop - center region", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .crop(25, 25, cropSize.width, cropSize.height)
@@ -214,14 +214,14 @@ it("cropCenter - center crop", () => {
     original.height,
     128,
     128,
-    128
+    128,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .cropCenter(cropSize.width, cropSize.height)
@@ -236,7 +236,7 @@ it("cropCenter - center crop", () => {
     cropSize.height,
     128,
     128,
-    128
+    128,
   );
   assertImagesSimilar(
     result.buffer,
@@ -244,7 +244,7 @@ it("cropCenter - center crop", () => {
     cropSize.width,
     cropSize.height,
     "rgba",
-    2
+    2,
   );
 });
 
@@ -257,7 +257,7 @@ it("flipHorizontal - horizontal flip", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.flipHorizontal().toBufferSync("rgba");
 
@@ -281,7 +281,7 @@ it("flipVertical - vertical flip", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.flipVertical().toBufferSync("rgba");
 
@@ -296,7 +296,7 @@ it("flipVertical - vertical flip", () => {
   const firstRowResult = resultData.slice(0, size.width * 4);
   const lastRowOriginal = originalData.slice(
     (size.height - 1) * size.width * 4,
-    size.height * size.width * 4
+    size.height * size.width * 4,
   );
 
   expect(Array.from(firstRowResult)).toStrictEqual(Array.from(lastRowOriginal));
@@ -311,7 +311,7 @@ it("rotate - 90 degrees clockwise", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.rotate("CW90").toBufferSync("rgba");
 
@@ -328,7 +328,7 @@ it("rotate - 180 degrees", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.rotate("CW180").toBufferSync("rgba");
 
@@ -345,7 +345,7 @@ it("rotate - 270 degrees clockwise", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.rotate("CW270").toBufferSync("rgba");
 
@@ -364,14 +364,14 @@ it("pad - add padding around image", () => {
     original.height,
     255,
     0,
-    0
+    0,
   ); // Red
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .pad(padding.left, padding.right, padding.top, padding.bottom, paddingColor)
@@ -393,7 +393,7 @@ it("complex transformation chain", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .scale(50, 50, "Exact")
@@ -416,14 +416,14 @@ it("format conversion - RGBA to RGB", () => {
     128,
     64,
     255,
-    "rgba"
+    "rgba",
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.toBufferSync("rgb");
 
@@ -447,14 +447,14 @@ it("format conversion - RGB to RGBA", () => {
     128,
     64,
     255,
-    "rgb"
+    "rgb",
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     size.width,
     size.height,
-    "rgb"
+    "rgb",
   );
   const result = transformer.toBufferSync("rgba");
 
@@ -479,7 +479,7 @@ it("toBuffer - async version", async () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = await transformer.scale(20, 20).toBuffer("rgba");
 
@@ -496,14 +496,14 @@ it("getCurrentDimensions - track size changes", () => {
     original.height,
     255,
     255,
-    255
+    255,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
 
   // Check initial dimensions
@@ -545,13 +545,13 @@ it("edge case - crop out of bounds", () => {
     size.height,
     255,
     255,
-    255
+    255,
   );
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
 
   expect(() => {
@@ -569,14 +569,14 @@ it("pad - padding color correctness", () => {
     original.height,
     255,
     255,
-    255
+    255,
   ); // White center
 
   const transformer = ImageTransformer.fromBuffer(
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer
     .pad(padding.left, padding.right, padding.top, padding.bottom, paddingColor)
@@ -634,7 +634,7 @@ it("rotate - rotation correctness verification", () => {
     Buffer.from(buffer),
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result = transformer.rotate("CW90").toBufferSync("rgba");
 
@@ -662,14 +662,14 @@ it("format consistency - RGBA->RGB->RGBA round trip", () => {
     200,
     100,
     50,
-    255
+    255,
   );
 
   const transformer = ImageTransformer.fromBuffer(
     original,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const rgbResult = transformer.toBufferSync("rgb");
 
@@ -678,7 +678,7 @@ it("format consistency - RGBA->RGB->RGBA round trip", () => {
     rgbResult.buffer,
     size.width,
     size.height,
-    "rgb"
+    "rgb",
   );
   const rgbaResult = transformer2.toBufferSync("rgba");
 
@@ -704,7 +704,7 @@ it("resize modes - Fill vs Fit vs Exact behavior verification", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const exactResult = exactTransformer
     .scale(target.width, target.height, "Exact")
@@ -718,7 +718,7 @@ it("resize modes - Fill vs Fit vs Exact behavior verification", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const fitResult = fitTransformer
     .scale(target.width, target.height, "Fit")
@@ -731,7 +731,7 @@ it("resize modes - Fill vs Fit vs Exact behavior verification", () => {
     buffer,
     original.width,
     original.height,
-    "rgba"
+    "rgba",
   );
   const fillResult = fillTransformer
     .scale(target.width, target.height, "Fill")
@@ -748,7 +748,7 @@ it("crop - boundary validation", () => {
     size.height,
     100,
     150,
-    200
+    200,
   );
 
   // Valid crops
@@ -756,7 +756,7 @@ it("crop - boundary validation", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result1 = transformer1
     .crop(0, 0, size.width, size.height)
@@ -768,7 +768,7 @@ it("crop - boundary validation", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result2 = transformer2.crop(5, 5, 5, 5).toBufferSync("rgba");
   expect(result2.width).toBe(5);
@@ -779,7 +779,7 @@ it("crop - boundary validation", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result3 = transformer3.crop(9, 9, 1, 1).toBufferSync("rgba");
   expect(result3.width).toBe(1);
@@ -796,7 +796,7 @@ it("operation chain - order dependency", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result1 = transformer1.scale(4, 3).rotate("CW90").toBufferSync("rgba");
   expect(result1.width).toBe(3); // After scale(4,3) then rotate90: 3x4
@@ -807,7 +807,7 @@ it("operation chain - order dependency", () => {
     buffer,
     size.width,
     size.height,
-    "rgba"
+    "rgba",
   );
   const result2 = transformer2.rotate("CW90").scale(4, 3).toBufferSync("rgba");
   expect(result2.width).toBe(4); // After rotate90(6x8) then scale: 4x3
@@ -841,7 +841,7 @@ it("format edge cases - buffer size validation", () => {
       wrongRgbaBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgba");
   }).toThrow();
 
@@ -852,7 +852,7 @@ it("format edge cases - buffer size validation", () => {
       wrongRgbBuffer,
       size.width,
       size.height,
-      "rgb"
+      "rgb",
     ).toBufferSync("rgb");
   }).toThrow();
 });
@@ -870,13 +870,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Create overlay image (semi-transparent blue)
@@ -887,13 +887,13 @@ describe("Overlay operations", () => {
       0,
       255,
       128,
-      "rgba"
+      "rgba",
     );
     const overlayTransformer = ImageTransformer.fromBuffer(
       overlayBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Overlay overlay onto base at origin
@@ -922,13 +922,13 @@ describe("Overlay operations", () => {
       255,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Create smaller overlay image (solid red, 20x20)
@@ -940,13 +940,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const overlayTransformer = ImageTransformer.fromBuffer(
       overlayBuffer,
       overlaySize.width,
       overlaySize.height,
-      "rgba"
+      "rgba",
     );
 
     // Overlay at position (40, 40) - center area
@@ -979,13 +979,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Create first overlay (red with 50% alpha, 40x40)
@@ -996,13 +996,13 @@ describe("Overlay operations", () => {
       0,
       0,
       128,
-      "rgba"
+      "rgba",
     );
     const overlay1Transformer = ImageTransformer.fromBuffer(
       overlay1Buffer,
       40,
       40,
-      "rgba"
+      "rgba",
     );
 
     // Create second overlay (green with 50% alpha, 40x40)
@@ -1013,13 +1013,13 @@ describe("Overlay operations", () => {
       255,
       0,
       128,
-      "rgba"
+      "rgba",
     );
     const overlay2Transformer = ImageTransformer.fromBuffer(
       overlay2Buffer,
       40,
       40,
-      "rgba"
+      "rgba",
     );
 
     // Create third overlay (blue with 50% alpha, 40x40)
@@ -1030,13 +1030,13 @@ describe("Overlay operations", () => {
       0,
       255,
       128,
-      "rgba"
+      "rgba",
     );
     const overlay3Transformer = ImageTransformer.fromBuffer(
       overlay3Buffer,
       40,
       40,
-      "rgba"
+      "rgba",
     );
 
     // Apply multiple overlays at different positions
@@ -1077,13 +1077,13 @@ describe("Overlay operations", () => {
       255,
       255,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Create overlay (solid red, 30x30)
@@ -1094,13 +1094,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const overlayTransformer = ImageTransformer.fromBuffer(
       overlayBuffer,
       30,
       30,
-      "rgba"
+      "rgba",
     );
 
     // Position overlay so it extends beyond the base image bounds
@@ -1133,13 +1133,13 @@ describe("Overlay operations", () => {
       255,
       255,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     const overlayBuffer = generateSolidColorImage(
@@ -1149,13 +1149,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const overlayTransformer = ImageTransformer.fromBuffer(
       overlayBuffer,
       20,
       20,
-      "rgba"
+      "rgba",
     );
 
     // Position overlay completely outside bounds
@@ -1179,13 +1179,13 @@ describe("Overlay operations", () => {
       0,
       255,
       255,
-      "rgba"
+      "rgba",
     );
     const baseTransformer = ImageTransformer.fromBuffer(
       baseBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     );
 
     // Create overlay and apply transformations
@@ -1196,13 +1196,13 @@ describe("Overlay operations", () => {
       0,
       0,
       255,
-      "rgba"
+      "rgba",
     );
     const overlayTransformer = ImageTransformer.fromBuffer(
       overlayBuffer,
       size.width,
       size.height,
-      "rgba"
+      "rgba",
     )
       .scale(30, 30, "Exact") // Scale down
       .rotate("CW90"); // Rotate
@@ -1229,13 +1229,21 @@ describe("premultiplied alpha", () => {
   const { width, height } = TEST_SIZES.small;
 
   it("premultiplyAlpha flattens rgb output over black (the reported bug)", () => {
-    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+    const buffer = generateSolidColorImage(
+      width,
+      height,
+      255,
+      0,
+      0,
+      128,
+      "rgba",
+    );
 
     const result = ImageTransformer.fromBuffer(
       buffer,
       width,
       height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgb", { premultiplyAlpha: true });
 
     const px = new Uint8Array(result.buffer);
@@ -1246,13 +1254,21 @@ describe("premultiplied alpha", () => {
   });
 
   it("rgb output without the option keeps full intensity (old behavior)", () => {
-    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+    const buffer = generateSolidColorImage(
+      width,
+      height,
+      255,
+      0,
+      0,
+      128,
+      "rgba",
+    );
 
     const result = ImageTransformer.fromBuffer(
       buffer,
       width,
       height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgb");
 
     const px = new Uint8Array(result.buffer);
@@ -1260,13 +1276,21 @@ describe("premultiplied alpha", () => {
   });
 
   it("premultiplyAlpha produces premultiplied rgba output", () => {
-    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+    const buffer = generateSolidColorImage(
+      width,
+      height,
+      255,
+      0,
+      0,
+      128,
+      "rgba",
+    );
 
     const result = ImageTransformer.fromBuffer(
       buffer,
       width,
       height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgba", { premultiplyAlpha: true });
 
     const px = new Uint8Array(result.buffer);
@@ -1285,12 +1309,18 @@ describe("premultiplied alpha", () => {
       0,
       0,
       128,
-      "rgba"
+      "rgba",
     );
 
-    const result = ImageTransformer.fromBuffer(premultiplied, width, height, "rgba", {
-      premultipliedAlpha: true,
-    }).toBufferSync("rgba");
+    const result = ImageTransformer.fromBuffer(
+      premultiplied,
+      width,
+      height,
+      "rgba",
+      {
+        premultipliedAlpha: true,
+      },
+    ).toBufferSync("rgba");
 
     const px = new Uint8Array(result.buffer);
     // 128 * 255 / 128 = 255 (recovered straight value)
@@ -1301,13 +1331,21 @@ describe("premultiplied alpha", () => {
   });
 
   it("round-trips premultiplied input -> premultiplied output", () => {
-    const straight = generateSolidColorImage(width, height, 200, 100, 50, 128, "rgba");
+    const straight = generateSolidColorImage(
+      width,
+      height,
+      200,
+      100,
+      50,
+      128,
+      "rgba",
+    );
 
     const premultiplied = ImageTransformer.fromBuffer(
       straight,
       width,
       height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgba", { premultiplyAlpha: true });
 
     const roundTripped = ImageTransformer.fromBuffer(
@@ -1315,7 +1353,7 @@ describe("premultiplied alpha", () => {
       width,
       height,
       "rgba",
-      { premultipliedAlpha: true }
+      { premultipliedAlpha: true },
     ).toBufferSync("rgba", { premultiplyAlpha: true });
 
     // Premultiply -> straighten -> premultiply returns the premultiplied form
@@ -1326,16 +1364,30 @@ describe("premultiplied alpha", () => {
       width,
       height,
       "rgba",
-      2
+      2,
     );
   });
 
   it("fully transparent pixels do not divide by zero", () => {
-    const buffer = generateSolidColorImage(width, height, 200, 100, 50, 0, "rgba");
+    const buffer = generateSolidColorImage(
+      width,
+      height,
+      200,
+      100,
+      50,
+      0,
+      "rgba",
+    );
 
-    const straightened = ImageTransformer.fromBuffer(buffer, width, height, "rgba", {
-      premultipliedAlpha: true,
-    }).toBufferSync("rgba");
+    const straightened = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgba",
+      {
+        premultipliedAlpha: true,
+      },
+    ).toBufferSync("rgba");
 
     const px = new Uint8Array(straightened.buffer);
     expect(px[3]).toBe(0);
@@ -1344,7 +1396,7 @@ describe("premultiplied alpha", () => {
       buffer,
       width,
       height,
-      "rgba"
+      "rgba",
     ).toBufferSync("rgb", { premultiplyAlpha: true });
 
     const rgb = new Uint8Array(premultiplied.buffer);
@@ -1354,17 +1406,31 @@ describe("premultiplied alpha", () => {
   });
 
   it("is a no-op for images without an alpha channel", () => {
-    const buffer = generateSolidColorImage(width, height, 100, 150, 200, 255, "rgb");
+    const buffer = generateSolidColorImage(
+      width,
+      height,
+      100,
+      150,
+      200,
+      255,
+      "rgb",
+    );
 
-    const withOption = ImageTransformer.fromBuffer(buffer, width, height, "rgb", {
-      premultipliedAlpha: true,
-    }).toBufferSync("rgb", { premultiplyAlpha: true });
+    const withOption = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgb",
+      {
+        premultipliedAlpha: true,
+      },
+    ).toBufferSync("rgb", { premultiplyAlpha: true });
 
     const baseline = ImageTransformer.fromBuffer(
       buffer,
       width,
       height,
-      "rgb"
+      "rgb",
     ).toBufferSync("rgb");
 
     assertImagesSimilar(
@@ -1373,7 +1439,7 @@ describe("premultiplied alpha", () => {
       width,
       height,
       "rgb",
-      0
+      0,
     );
   });
 });

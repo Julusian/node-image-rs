@@ -42,17 +42,23 @@ All image operations are performed via the `ImageTransformer` class. Transforms 
 Creates an `ImageTransformer` from a raw pixel buffer.
 
 ```ts
-import { ImageTransformer } from '@julusian/image-rs'
+import { ImageTransformer } from "@julusian/image-rs";
 
-const transformer = ImageTransformer.fromBuffer(rawPixelBuffer, 1920, 1080, 'rgba')
+const transformer = ImageTransformer.fromBuffer(
+  rawPixelBuffer,
+  1920,
+  1080,
+  "rgba",
+);
 
 // If the buffer already has premultiplied alpha (e.g. from a GPU/canvas):
-const t2 = ImageTransformer.fromBuffer(premultBuffer, 1920, 1080, 'rgba', {
+const t2 = ImageTransformer.fromBuffer(premultBuffer, 1920, 1080, "rgba", {
   premultipliedAlpha: true,
-})
+});
 ```
 
 **Parameters:**
+
 - `buffer: Uint8Array` — Raw pixel data
 - `width: number` — Width of the image in pixels
 - `height: number` — Height of the image in pixels
@@ -67,14 +73,15 @@ const t2 = ImageTransformer.fromBuffer(premultBuffer, 1920, 1080, 'rgba', {
 Creates an `ImageTransformer` from a buffer containing an encoded image (e.g. a JPEG or PNG file read from disk). Width and height are determined automatically.
 
 ```ts
-import fs from 'fs'
-import { ImageTransformer } from '@julusian/image-rs'
+import fs from "fs";
+import { ImageTransformer } from "@julusian/image-rs";
 
-const fileBuffer = fs.readFileSync('photo.jpg')
-const transformer = ImageTransformer.fromEncodedImage(fileBuffer)
+const fileBuffer = fs.readFileSync("photo.jpg");
+const transformer = ImageTransformer.fromEncodedImage(fileBuffer);
 ```
 
 **Parameters:**
+
 - `image: Uint8Array` — Encoded image bytes
 
 ---
@@ -84,10 +91,13 @@ const transformer = ImageTransformer.fromEncodedImage(fileBuffer)
 Creates an `ImageTransformer` from a data URL string such as `data:image/png;base64,...`.
 
 ```ts
-const transformer = ImageTransformer.fromImageDataUrl('data:image/png;base64,...')
+const transformer = ImageTransformer.fromImageDataUrl(
+  "data:image/png;base64,...",
+);
 ```
 
 **Parameters:**
+
 - `dataUrl: string` — A data URL containing the encoded image
 
 ---
@@ -101,10 +111,11 @@ Transforms are chained on the `ImageTransformer` instance and applied in the ord
 Scales the image to the given dimensions.
 
 ```ts
-transformer.scale(640, 480, 'Fit')
+transformer.scale(640, 480, "Fit");
 ```
 
 **Parameters:**
+
 - `width: number` — Target width
 - `height: number` — Target height
 - `mode?: ResizeMode` — How to handle aspect ratio mismatches (see [`ResizeMode`](#resizemode))
@@ -116,10 +127,11 @@ transformer.scale(640, 480, 'Fit')
 Crops a region from the image.
 
 ```ts
-transformer.crop(100, 50, 640, 480)
+transformer.crop(100, 50, 640, 480);
 ```
 
 **Parameters:**
+
 - `x: number` — Left offset of the crop region
 - `y: number` — Top offset of the crop region
 - `width: number` — Width of the crop region
@@ -132,10 +144,11 @@ transformer.crop(100, 50, 640, 480)
 Crops a region of the given size from the centre of the image.
 
 ```ts
-transformer.cropCenter(640, 480)
+transformer.cropCenter(640, 480);
 ```
 
 **Parameters:**
+
 - `width: number` — Width of the crop region
 - `height: number` — Height of the crop region
 
@@ -146,10 +159,11 @@ transformer.cropCenter(640, 480)
 Adds padding around the image in the given RGBA colour.
 
 ```ts
-transformer.pad(10, 10, 10, 10, { red: 0, green: 0, blue: 0, alpha: 255 })
+transformer.pad(10, 10, 10, 10, { red: 0, green: 0, blue: 0, alpha: 255 });
 ```
 
 **Parameters:**
+
 - `left: number` — Pixels to add on the left
 - `right: number` — Pixels to add on the right
 - `top: number` — Pixels to add on the top
@@ -163,7 +177,7 @@ transformer.pad(10, 10, 10, 10, { red: 0, green: 0, blue: 0, alpha: 255 })
 Flips the image vertically (top-to-bottom).
 
 ```ts
-transformer.flipVertical()
+transformer.flipVertical();
 ```
 
 ---
@@ -173,7 +187,7 @@ transformer.flipVertical()
 Flips the image horizontally (left-to-right).
 
 ```ts
-transformer.flipHorizontal()
+transformer.flipHorizontal();
 ```
 
 ---
@@ -183,10 +197,11 @@ transformer.flipHorizontal()
 Rotates the image clockwise.
 
 ```ts
-transformer.rotate('CW90')
+transformer.rotate("CW90");
 ```
 
 **Parameters:**
+
 - `rotation: RotationMode` — One of `'CW90'`, `'CW180'`, or `'CW270'`
 
 ---
@@ -196,11 +211,12 @@ transformer.rotate('CW90')
 Composites another image on top of the current image at the given position.
 
 ```ts
-const watermark = ImageTransformer.fromEncodedImage(watermarkBytes)
-transformer.overlay(watermark, 20, 20)
+const watermark = ImageTransformer.fromEncodedImage(watermarkBytes);
+transformer.overlay(watermark, 20, 20);
 ```
 
 **Parameters:**
+
 - `other: ImageTransformer` — The image to draw on top
 - `x: number` — X coordinate for the top-left corner of the overlay
 - `y: number` — Y coordinate for the top-left corner of the overlay
@@ -212,7 +228,7 @@ transformer.overlay(watermark, 20, 20)
 Returns the current width and height after the transforms applied so far, without executing the full pipeline.
 
 ```ts
-const { width, height } = transformer.getCurrentDimensions()
+const { width, height } = transformer.getCurrentDimensions();
 ```
 
 **Returns:** `ImageInfo` — `{ width: number, height: number }`
@@ -226,19 +242,20 @@ const { width, height } = transformer.getCurrentDimensions()
 Executes the transform pipeline and returns a raw pixel buffer.
 
 ```ts
-const result = await transformer.toBuffer('rgba')
+const result = await transformer.toBuffer("rgba");
 // result.buffer — Buffer of raw pixel data
 // result.width  — Width of the output image
 // result.height — Height of the output image
 
 // Premultiply on output. For 'rgb' this flattens the image over black,
 // so the alpha is reflected in the RGB values instead of being dropped:
-const flattened = await transformer.toBuffer('rgb', { premultiplyAlpha: true })
+const flattened = await transformer.toBuffer("rgb", { premultiplyAlpha: true });
 ```
 
 > ⚠️ `toBufferSync` runs on the main thread and can block the event loop. Prefer `toBuffer` in production.
 
 **Parameters:**
+
 - `format: PixelFormat` — Desired pixel layout of the output buffer
 - `options?: BufferOptions` — Optional buffer options
   - `premultiplyAlpha?: boolean` — When `true`, the RGB channels are premultiplied by alpha in the output. For `'rgb'` (which has no alpha channel) this flattens the image over black; otherwise the alpha is simply dropped at full intensity. Defaults to `false`. No effect on formats without an alpha channel. Only available on the raw pixel buffer output — encoded formats keep their own straight-alpha semantics.
@@ -252,13 +269,14 @@ const flattened = await transformer.toBuffer('rgb', { premultiplyAlpha: true })
 Executes the transform pipeline and encodes the result as JPEG, WebP, or PNG.
 
 ```ts
-const result = await transformer.toEncodedImage('jpeg', { quality: 85 })
-fs.writeFileSync('output.jpg', result.buffer)
+const result = await transformer.toEncodedImage("jpeg", { quality: 85 });
+fs.writeFileSync("output.jpg", result.buffer);
 ```
 
 > ⚠️ `toEncodedImageSync` runs on the main thread and can block the event loop. Prefer `toEncodedImage` in production.
 
 **Parameters:**
+
 - `format: ImageFormat` — `'jpeg'`, `'webp'`, or `'png'`
 - `options?: EncodingOptions` — Optional encoding settings (see [`EncodingOptions`](#encodingoptions))
 
@@ -271,13 +289,14 @@ fs.writeFileSync('output.jpg', result.buffer)
 Executes the transform pipeline and returns the result as a base64 data URL string.
 
 ```ts
-const dataUrl = await transformer.toDataUrl('png')
+const dataUrl = await transformer.toDataUrl("png");
 // "data:image/png;base64,..."
 ```
 
 > ⚠️ `toDataUrlSync` runs on the main thread and can block the event loop. Prefer `toDataUrl` in production.
 
 **Parameters:**
+
 - `format: ImageFormat` — `'jpeg'`, `'webp'`, or `'png'`
 - `options?: EncodingOptions` — Optional encoding settings
 
@@ -292,7 +311,7 @@ const dataUrl = await transformer.toDataUrl('png')
 The memory layout of raw pixel buffers.
 
 ```ts
-type PixelFormat = 'rgba' | 'rgb' | 'bgra' | 'bgr'
+type PixelFormat = "rgba" | "rgb" | "bgra" | "bgr";
 ```
 
 #### `ImageFormat`
@@ -300,7 +319,7 @@ type PixelFormat = 'rgba' | 'rgb' | 'bgra' | 'bgr'
 Supported encoded image formats.
 
 ```ts
-type ImageFormat = 'jpeg' | 'webp' | 'png'
+type ImageFormat = "jpeg" | "webp" | "png";
 ```
 
 #### `ResizeMode`
@@ -308,7 +327,7 @@ type ImageFormat = 'jpeg' | 'webp' | 'png'
 How to handle aspect ratio mismatches when scaling.
 
 ```ts
-type ResizeMode = 'Exact' | 'Fill' | 'Fit'
+type ResizeMode = "Exact" | "Fill" | "Fit";
 ```
 
 - `'Exact'` — Stretch/squash to exactly the target dimensions, ignoring aspect ratio
@@ -320,7 +339,7 @@ type ResizeMode = 'Exact' | 'Fill' | 'Fit'
 Clockwise rotation amounts.
 
 ```ts
-type RotationMode = 'CW90' | 'CW180' | 'CW270'
+type RotationMode = "CW90" | "CW180" | "CW270";
 ```
 
 #### `RgbaValue`
@@ -329,10 +348,10 @@ An RGBA colour with channels in the range 0–255.
 
 ```ts
 interface RgbaValue {
-  red: number
-  green: number
-  blue: number
-  alpha: number
+  red: number;
+  green: number;
+  blue: number;
+  alpha: number;
 }
 ```
 
@@ -342,9 +361,9 @@ The result of an output operation.
 
 ```ts
 interface ComputedImage {
-  buffer: Buffer
-  width: number
-  height: number
+  buffer: Buffer;
+  width: number;
+  height: number;
 }
 ```
 
@@ -354,7 +373,7 @@ Options for encoded image output.
 
 ```ts
 interface EncodingOptions {
-  quality?: number  // 0–100, applies to JPEG and WebP
+  quality?: number; // 0–100, applies to JPEG and WebP
 }
 ```
 
@@ -365,7 +384,7 @@ Options for `fromBuffer`.
 ```ts
 interface LoadOptions {
   // Source buffer already has premultiplied alpha; straighten it on load.
-  premultipliedAlpha?: boolean
+  premultipliedAlpha?: boolean;
 }
 ```
 
@@ -376,7 +395,7 @@ Options for `toBuffer` / `toBufferSync`.
 ```ts
 interface BufferOptions {
   // Premultiply RGB by alpha in the output. For 'rgb' this flattens over black.
-  premultiplyAlpha?: boolean
+  premultiplyAlpha?: boolean;
 }
 ```
 
@@ -386,8 +405,8 @@ Basic image dimensions.
 
 ```ts
 interface ImageInfo {
-  width: number
-  height: number
+  width: number;
+  height: number;
 }
 ```
 
@@ -396,17 +415,16 @@ interface ImageInfo {
 ### Example: resize and encode
 
 ```ts
-import fs from 'fs'
-import { ImageTransformer } from '@julusian/image-rs'
+import fs from "fs";
+import { ImageTransformer } from "@julusian/image-rs";
 
-const input = fs.readFileSync('input.png')
+const input = fs.readFileSync("input.png");
 
-const result = await ImageTransformer
-  .fromEncodedImage(input)
-  .scale(320, 240, 'Fit')
-  .toEncodedImage('jpeg', { quality: 80 })
+const result = await ImageTransformer.fromEncodedImage(input)
+  .scale(320, 240, "Fit")
+  .toEncodedImage("jpeg", { quality: 80 });
 
-fs.writeFileSync('output.jpg', result.buffer)
+fs.writeFileSync("output.jpg", result.buffer);
 ```
 
 ## License

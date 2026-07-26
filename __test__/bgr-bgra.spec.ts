@@ -95,144 +95,148 @@ it("pad + format conversion - RGB input -> BGRA output preserves padding color a
   expect(data[centerOffset + 3]).toBe(255); // Alpha (should be 255 for converted RGB)
 });
 
-  // fromBuffer tests for BGR and BGRA input
-  it("fromBuffer - accepts BGR input and converts to RGBA correctly", () => {
-    const width = 2;
-    const height = 2;
+// fromBuffer tests for BGR and BGRA input
+it("fromBuffer - accepts BGR input and converts to RGBA correctly", () => {
+  const width = 2;
+  const height = 2;
 
-    // Define pixels in RGB for clarity, we'll store them in BGR order
-    // TL: Red (255,0,0), TR: Green (0,255,0), BL: Blue (0,0,255), BR: White (255,255,255)
-    const rgbPixels = [
-      [255, 0, 0],
-      [0, 255, 0],
-      [0, 0, 255],
-      [255, 255, 255],
-    ];
+  // Define pixels in RGB for clarity, we'll store them in BGR order
+  // TL: Red (255,0,0), TR: Green (0,255,0), BL: Blue (0,0,255), BR: White (255,255,255)
+  const rgbPixels = [
+    [255, 0, 0],
+    [0, 255, 0],
+    [0, 0, 255],
+    [255, 255, 255],
+  ];
 
-    // Create BGR buffer (3 channels)
-    const bgr = new Uint8Array(width * height * 3);
-    for (let i = 0; i < rgbPixels.length; i++) {
-      const [r, g, b] = rgbPixels[i];
-      const off = i * 3;
-      bgr[off] = b; // Blue
-      bgr[off + 1] = g; // Green
-      bgr[off + 2] = r; // Red
-    }
+  // Create BGR buffer (3 channels)
+  const bgr = new Uint8Array(width * height * 3);
+  for (let i = 0; i < rgbPixels.length; i++) {
+    const [r, g, b] = rgbPixels[i];
+    const off = i * 3;
+    bgr[off] = b; // Blue
+    bgr[off + 1] = g; // Green
+    bgr[off + 2] = r; // Red
+  }
 
-    const transformer = ImageTransformer.fromBuffer(bgr, width, height, "bgr");
-    const out = transformer.toBufferSync("rgba");
-    expect(out.width).toBe(width);
-    expect(out.height).toBe(height);
+  const transformer = ImageTransformer.fromBuffer(bgr, width, height, "bgr");
+  const out = transformer.toBufferSync("rgba");
+  expect(out.width).toBe(width);
+  expect(out.height).toBe(height);
 
-    const data = new Uint8Array(out.buffer);
-    // Verify each pixel was converted back to RGBA (alpha should be 255)
-    for (let i = 0; i < rgbPixels.length; i++) {
-      const [r, g, b] = rgbPixels[i];
-      const off = i * 4;
-      expect(data[off]).toBe(r);
-      expect(data[off + 1]).toBe(g);
-      expect(data[off + 2]).toBe(b);
-      expect(data[off + 3]).toBe(255);
-    }
-  });
+  const data = new Uint8Array(out.buffer);
+  // Verify each pixel was converted back to RGBA (alpha should be 255)
+  for (let i = 0; i < rgbPixels.length; i++) {
+    const [r, g, b] = rgbPixels[i];
+    const off = i * 4;
+    expect(data[off]).toBe(r);
+    expect(data[off + 1]).toBe(g);
+    expect(data[off + 2]).toBe(b);
+    expect(data[off + 3]).toBe(255);
+  }
+});
 
-  it("fromBuffer - accepts BGRA input and converts to RGBA correctly (preserves alpha)", () => {
-    const width = 2;
-    const height = 2;
+it("fromBuffer - accepts BGRA input and converts to RGBA correctly (preserves alpha)", () => {
+  const width = 2;
+  const height = 2;
 
-    // Pixels as RGBA tuples for clarity
-    const rgbaPixels = [
-      [10, 20, 30, 128],
-      [40, 50, 60, 200],
-      [70, 80, 90, 0],
-      [255, 255, 255, 255],
-    ];
+  // Pixels as RGBA tuples for clarity
+  const rgbaPixels = [
+    [10, 20, 30, 128],
+    [40, 50, 60, 200],
+    [70, 80, 90, 0],
+    [255, 255, 255, 255],
+  ];
 
-    // Create BGRA buffer (4 channels in BGRA order)
-    const bgra = new Uint8Array(width * height * 4);
-    for (let i = 0; i < rgbaPixels.length; i++) {
-      const [r, g, b, a] = rgbaPixels[i];
-      const off = i * 4;
-      bgra[off] = b; // Blue
-      bgra[off + 1] = g; // Green
-      bgra[off + 2] = r; // Red
-      bgra[off + 3] = a; // Alpha
-    }
+  // Create BGRA buffer (4 channels in BGRA order)
+  const bgra = new Uint8Array(width * height * 4);
+  for (let i = 0; i < rgbaPixels.length; i++) {
+    const [r, g, b, a] = rgbaPixels[i];
+    const off = i * 4;
+    bgra[off] = b; // Blue
+    bgra[off + 1] = g; // Green
+    bgra[off + 2] = r; // Red
+    bgra[off + 3] = a; // Alpha
+  }
 
-    const transformer = ImageTransformer.fromBuffer(bgra, width, height, "bgra");
-    const out = transformer.toBufferSync("rgba");
-    expect(out.width).toBe(width);
-    expect(out.height).toBe(height);
+  const transformer = ImageTransformer.fromBuffer(bgra, width, height, "bgra");
+  const out = transformer.toBufferSync("rgba");
+  expect(out.width).toBe(width);
+  expect(out.height).toBe(height);
 
-    const data = new Uint8Array(out.buffer);
-    // Verify conversion to RGBA preserved values
-    for (let i = 0; i < rgbaPixels.length; i++) {
-      const [r, g, b, a] = rgbaPixels[i];
-      const off = i * 4;
-      expect(data[off]).toBe(r);
-      expect(data[off + 1]).toBe(g);
-      expect(data[off + 2]).toBe(b);
-      expect(data[off + 3]).toBe(a);
-    }
-  });
+  const data = new Uint8Array(out.buffer);
+  // Verify conversion to RGBA preserved values
+  for (let i = 0; i < rgbaPixels.length; i++) {
+    const [r, g, b, a] = rgbaPixels[i];
+    const off = i * 4;
+    expect(data[off]).toBe(r);
+    expect(data[off + 1]).toBe(g);
+    expect(data[off + 2]).toBe(b);
+    expect(data[off + 3]).toBe(a);
+  }
+});
 
-  // fromBuffer + pad: BGR input -> pad -> BGR output
-  it("fromBuffer + pad - BGR input retains padding color when output as BGR", () => {
-    const width = 2;
-    const height = 1;
+// fromBuffer + pad: BGR input -> pad -> BGR output
+it("fromBuffer + pad - BGR input retains padding color when output as BGR", () => {
+  const width = 2;
+  const height = 1;
 
-    // Single row: two pixels (red, green) stored as BGR
-    const bgr = new Uint8Array([0, 0, 255, 0, 255, 0]);
+  // Single row: two pixels (red, green) stored as BGR
+  const bgr = new Uint8Array([0, 0, 255, 0, 255, 0]);
 
-    const padColor = { red: 11, green: 22, blue: 33, alpha: 255 };
-    const left = 1;
-    const right = 1;
-    const top = 1;
-    const bottom = 1;
+  const padColor = { red: 11, green: 22, blue: 33, alpha: 255 };
+  const left = 1;
+  const right = 1;
+  const top = 1;
+  const bottom = 1;
 
-    const transformer = ImageTransformer.fromBuffer(bgr, width, height, "bgr");
-    const result = transformer.pad(left, right, top, bottom, padColor).toBufferSync("bgr");
+  const transformer = ImageTransformer.fromBuffer(bgr, width, height, "bgr");
+  const result = transformer
+    .pad(left, right, top, bottom, padColor)
+    .toBufferSync("bgr");
 
-    const expectedWidth = width + left + right;
-    const expectedHeight = height + top + bottom;
+  const expectedWidth = width + left + right;
+  const expectedHeight = height + top + bottom;
 
-    expect(result.width).toBe(expectedWidth);
-    expect(result.height).toBe(expectedHeight);
+  expect(result.width).toBe(expectedWidth);
+  expect(result.height).toBe(expectedHeight);
 
-    const data = new Uint8Array(result.buffer);
-    // Top-left padding pixel should be padColor in BGR order
-    expect(data[0]).toBe(padColor.blue);
-    expect(data[1]).toBe(padColor.green);
-    expect(data[2]).toBe(padColor.red);
-  });
+  const data = new Uint8Array(result.buffer);
+  // Top-left padding pixel should be padColor in BGR order
+  expect(data[0]).toBe(padColor.blue);
+  expect(data[1]).toBe(padColor.green);
+  expect(data[2]).toBe(padColor.red);
+});
 
-  // fromBuffer + pad: BGRA input -> pad -> BGRA output (check alpha preserved)
-  it("fromBuffer + pad - BGRA input retains padding color and alpha when output as BGRA", () => {
-    const width = 1;
-    const height = 1;
+// fromBuffer + pad: BGRA input -> pad -> BGRA output (check alpha preserved)
+it("fromBuffer + pad - BGRA input retains padding color and alpha when output as BGRA", () => {
+  const width = 1;
+  const height = 1;
 
-    // Single pixel white with alpha 255 in BGRA order
-    const bgra = new Uint8Array([255, 255, 255, 255]);
+  // Single pixel white with alpha 255 in BGRA order
+  const bgra = new Uint8Array([255, 255, 255, 255]);
 
-    const padColor = { red: 2, green: 4, blue: 6, alpha: 128 };
-    const left = 1;
-    const right = 0;
-    const top = 0;
-    const bottom = 1;
+  const padColor = { red: 2, green: 4, blue: 6, alpha: 128 };
+  const left = 1;
+  const right = 0;
+  const top = 0;
+  const bottom = 1;
 
-    const transformer = ImageTransformer.fromBuffer(bgra, width, height, "bgra");
-    const result = transformer.pad(left, right, top, bottom, padColor).toBufferSync("bgra");
+  const transformer = ImageTransformer.fromBuffer(bgra, width, height, "bgra");
+  const result = transformer
+    .pad(left, right, top, bottom, padColor)
+    .toBufferSync("bgra");
 
-    const expectedWidth = width + left + right;
-    const expectedHeight = height + top + bottom;
+  const expectedWidth = width + left + right;
+  const expectedHeight = height + top + bottom;
 
-    expect(result.width).toBe(expectedWidth);
-    expect(result.height).toBe(expectedHeight);
+  expect(result.width).toBe(expectedWidth);
+  expect(result.height).toBe(expectedHeight);
 
-    const data = new Uint8Array(result.buffer);
-    // Top-left pixel is padding color in BGRA order
-    expect(data[0]).toBe(padColor.blue);
-    expect(data[1]).toBe(padColor.green);
-    expect(data[2]).toBe(padColor.red);
-    expect(data[3]).toBe(padColor.alpha);
-  });
+  const data = new Uint8Array(result.buffer);
+  // Top-left pixel is padding color in BGRA order
+  expect(data[0]).toBe(padColor.blue);
+  expect(data[1]).toBe(padColor.green);
+  expect(data[2]).toBe(padColor.red);
+  expect(data[3]).toBe(padColor.alpha);
+});

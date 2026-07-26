@@ -12,7 +12,7 @@ export function generateSolidColorImage(
   g: number,
   b: number,
   a: number = 255,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
@@ -36,7 +36,7 @@ export function generateSolidColorImage(
 export function generateGradientImage(
   width: number,
   height: number,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
@@ -66,7 +66,7 @@ export function generateCheckerboardImage(
   width: number,
   height: number,
   squareSize: number = 8,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
@@ -99,7 +99,7 @@ export function generateCheckerboardImage(
 export function generateQuadrantImage(
   width: number,
   height: number,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);
@@ -163,7 +163,7 @@ export function calculatePixelDifference(
   buffer2: Buffer,
   width: number,
   height: number,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): PixelDifference {
   if (buffer1.length !== buffer2.length) {
     return {
@@ -219,19 +219,19 @@ export function assertImagesSimilar(
   width: number,
   height: number,
   format: "rgba" | "rgb" = "rgba",
-  tolerance: number = 1
+  tolerance: number = 1,
 ): void {
   const diff = calculatePixelDifference(
     actual,
     expected,
     width,
     height,
-    format
+    format,
   );
 
   if (diff.maxDiff > tolerance) {
     throw new Error(
-      `Images differ by more than tolerance. Max difference: ${diff.maxDiff}, Average: ${diff.difference.toFixed(2)}, ${diff.percentDifferent.toFixed(2)}% of pixels different`
+      `Images differ by more than tolerance. Max difference: ${diff.maxDiff}, Average: ${diff.difference.toFixed(2)}, ${diff.percentDifferent.toFixed(2)}% of pixels different`,
     );
   }
 }
@@ -242,7 +242,7 @@ export function assertImagesSimilar(
 export function createTestPattern(
   width: number,
   height: number,
-  format: "rgba" | "rgb" = "rgba"
+  format: "rgba" | "rgb" = "rgba",
 ): Buffer {
   const channels = format === "rgba" ? 4 : 3;
   const buffer = new Uint8Array(width * height * channels);

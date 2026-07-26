@@ -13,15 +13,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": [
-    "__test__/**/*.ts",
-    "*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "target",
-    "prebuilds",
-    "dist",
-    "build"
-  ]
+  "include": ["__test__/**/*.ts", "*.ts"],
+  "exclude": ["node_modules", "target", "prebuilds", "dist", "build"]
 }
