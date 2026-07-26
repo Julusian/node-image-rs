@@ -1223,3 +1223,157 @@ describe("Overlay operations", () => {
     expect(pixels[centerOffset + 2]).toBe(0); // Blue should be replaced
   });
 });
+
+// Premultiplied-alpha handling on the I/O boundary
+describe("premultiplied alpha", () => {
+  const { width, height } = TEST_SIZES.small;
+
+  it("premultiplyAlpha flattens rgb output over black (the reported bug)", () => {
+    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+
+    const result = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgba"
+    ).toBufferSync("rgb", { premultiplyAlpha: true });
+
+    const px = new Uint8Array(result.buffer);
+    // 255 * 128 / 255 (rounded) = 128
+    expect(px[0]).toBe(128); // Red scaled by alpha
+    expect(px[1]).toBe(0);
+    expect(px[2]).toBe(0);
+  });
+
+  it("rgb output without the option keeps full intensity (old behavior)", () => {
+    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+
+    const result = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgba"
+    ).toBufferSync("rgb");
+
+    const px = new Uint8Array(result.buffer);
+    expect(px[0]).toBe(255); // alpha dropped, not composited
+  });
+
+  it("premultiplyAlpha produces premultiplied rgba output", () => {
+    const buffer = generateSolidColorImage(width, height, 255, 0, 0, 128, "rgba");
+
+    const result = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgba"
+    ).toBufferSync("rgba", { premultiplyAlpha: true });
+
+    const px = new Uint8Array(result.buffer);
+    expect(px[0]).toBe(128); // R premultiplied
+    expect(px[1]).toBe(0);
+    expect(px[2]).toBe(0);
+    expect(px[3]).toBe(128); // alpha preserved
+  });
+
+  it("premultipliedAlpha input is straightened on load", () => {
+    // A premultiplied red at 50% alpha: rgb already scaled to 128.
+    const premultiplied = generateSolidColorImage(
+      width,
+      height,
+      128,
+      0,
+      0,
+      128,
+      "rgba"
+    );
+
+    const result = ImageTransformer.fromBuffer(premultiplied, width, height, "rgba", {
+      premultipliedAlpha: true,
+    }).toBufferSync("rgba");
+
+    const px = new Uint8Array(result.buffer);
+    // 128 * 255 / 128 = 255 (recovered straight value)
+    expect(px[0]).toBe(255);
+    expect(px[1]).toBe(0);
+    expect(px[2]).toBe(0);
+    expect(px[3]).toBe(128);
+  });
+
+  it("round-trips premultiplied input -> premultiplied output", () => {
+    const straight = generateSolidColorImage(width, height, 200, 100, 50, 128, "rgba");
+
+    const premultiplied = ImageTransformer.fromBuffer(
+      straight,
+      width,
+      height,
+      "rgba"
+    ).toBufferSync("rgba", { premultiplyAlpha: true });
+
+    const roundTripped = ImageTransformer.fromBuffer(
+      premultiplied.buffer,
+      width,
+      height,
+      "rgba",
+      { premultipliedAlpha: true }
+    ).toBufferSync("rgba", { premultiplyAlpha: true });
+
+    // Premultiply -> straighten -> premultiply returns the premultiplied form
+    // within 8-bit rounding tolerance.
+    assertImagesSimilar(
+      roundTripped.buffer,
+      premultiplied.buffer,
+      width,
+      height,
+      "rgba",
+      2
+    );
+  });
+
+  it("fully transparent pixels do not divide by zero", () => {
+    const buffer = generateSolidColorImage(width, height, 200, 100, 50, 0, "rgba");
+
+    const straightened = ImageTransformer.fromBuffer(buffer, width, height, "rgba", {
+      premultipliedAlpha: true,
+    }).toBufferSync("rgba");
+
+    const px = new Uint8Array(straightened.buffer);
+    expect(px[3]).toBe(0);
+
+    const premultiplied = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgba"
+    ).toBufferSync("rgb", { premultiplyAlpha: true });
+
+    const rgb = new Uint8Array(premultiplied.buffer);
+    expect(rgb[0]).toBe(0); // transparent -> black in rgb
+    expect(rgb[1]).toBe(0);
+    expect(rgb[2]).toBe(0);
+  });
+
+  it("is a no-op for images without an alpha channel", () => {
+    const buffer = generateSolidColorImage(width, height, 100, 150, 200, 255, "rgb");
+
+    const withOption = ImageTransformer.fromBuffer(buffer, width, height, "rgb", {
+      premultipliedAlpha: true,
+    }).toBufferSync("rgb", { premultiplyAlpha: true });
+
+    const baseline = ImageTransformer.fromBuffer(
+      buffer,
+      width,
+      height,
+      "rgb"
+    ).toBufferSync("rgb");
+
+    assertImagesSimilar(
+      withOption.buffer,
+      baseline.buffer,
+      width,
+      height,
+      "rgb",
+      0
+    );
+  });
+});

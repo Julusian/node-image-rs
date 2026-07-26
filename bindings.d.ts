@@ -8,8 +8,9 @@ export declare class ImageTransformer {
    * @param width - Width of the image
    * @param height - Height of the image
    * @param format - Pixel format of the buffer
+   * @param options - Optional load options (e.g. whether the source is premultiplied)
    */
-  static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat): ImageTransformer
+  static fromBuffer(buffer: Uint8Array, width: number, height: number, format: PixelFormat, options?: LoadOptions | undefined | null): ImageTransformer
   /**
    * Create an `ImageTransformer` from a `Buffer` or `Uint8Array` containing an encoded image
    *
@@ -86,14 +87,16 @@ export declare class ImageTransformer {
    * Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
    *
    * @param format - The pixel format to pack into the buffer
+   * @param options - Optional buffer options (e.g. whether to premultiply alpha)
    */
-  toBufferSync(format: PixelFormat): ComputedImage
+  toBufferSync(format: PixelFormat, options?: BufferOptions | undefined | null): ComputedImage
   /**
    * Asynchronously convert the transformed image to a Buffer
    *
    * @param format - The pixel format to pack into the buffer
+   * @param options - Optional buffer options (e.g. whether to premultiply alpha)
    */
-  toBuffer(format: PixelFormat): Promise<ComputedImage>
+  toBuffer(format: PixelFormat, options?: BufferOptions | undefined | null): Promise<ComputedImage>
   /**
    * Convert the transformed image to an encoded image Buffer
    *
@@ -128,6 +131,14 @@ export declare class ImageTransformer {
   toDataUrl(format: ImageFormat, options?: EncodingOptions | undefined | null): Promise<string>
 }
 
+export interface BufferOptions {
+  /**
+   * Premultiply the RGB channels by the alpha channel in the output buffer.
+   * For the `rgb` format this flattens the image over black. Defaults to false.
+   */
+  premultiplyAlpha?: boolean
+}
+
 export interface ComputedImage {
   buffer: Buffer
   width: number
@@ -145,6 +156,14 @@ export type ImageFormat =  'jpeg'|
 export interface ImageInfo {
   width: number
   height: number
+}
+
+export interface LoadOptions {
+  /**
+   * The source buffer already has premultiplied alpha; straighten it on load so
+   * the internal representation stays straight (non-premultiplied). Defaults to false.
+   */
+  premultipliedAlpha?: boolean
 }
 
 export type PixelFormat =  'rgba'|

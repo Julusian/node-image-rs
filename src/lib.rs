@@ -235,6 +235,45 @@ fn swizzle_32(data: &mut [u8]) {
   }
 }
 
+// Multiply each RGB channel by the alpha channel (straight -> premultiplied).
+// No-op for images without an alpha channel. For `rgb` output the alpha is then
+// dropped, which is equivalent to compositing over black.
+fn premultiply_alpha(img: DynamicImage) -> DynamicImage {
+  if !img.color().has_alpha() {
+    return img;
+  }
+  let mut rgba = img.into_rgba8();
+  for px in rgba.pixels_mut() {
+    let a = px[3] as u16;
+    // Rounded division by 255: (c * a + 127) / 255.
+    px[0] = ((px[0] as u16 * a + 127) / 255) as u8;
+    px[1] = ((px[1] as u16 * a + 127) / 255) as u8;
+    px[2] = ((px[2] as u16 * a + 127) / 255) as u8;
+  }
+  DynamicImage::from(rgba)
+}
+
+// Divide each RGB channel by the alpha channel (premultiplied -> straight).
+// No-op for images without an alpha channel.
+fn straighten_alpha(img: DynamicImage) -> DynamicImage {
+  if !img.color().has_alpha() {
+    return img;
+  }
+  let mut rgba = img.into_rgba8();
+  for px in rgba.pixels_mut() {
+    let a = px[3] as u32;
+    if a == 0 {
+      // Fully transparent: premultiplied rgb is already 0, and there is nothing
+      // to recover. Leaving it as-is also avoids a divide-by-zero.
+      continue;
+    }
+    px[0] = ((px[0] as u32 * 255 + a / 2) / a).min(255) as u8;
+    px[1] = ((px[1] as u32 * 255 + a / 2) / a).min(255) as u8;
+    px[2] = ((px[2] as u32 * 255 + a / 2) / a).min(255) as u8;
+  }
+  DynamicImage::from(rgba)
+}
+
 fn encode_image(img: DynamicImage, format: &TargetFormat) -> Result<Vec<u8>> {
   match format {
     TargetFormat::PixelBuffer(PixelFormat::rgba) => Ok(img.into_rgba8().into_vec()),
@@ -316,6 +355,10 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
 
   let mut img = load_image(spec.buffer.as_ref(), spec.width, spec.height, spec.format)?;
 
+  if spec.source_premultiplied {
+    img = straighten_alpha(img);
+  }
+
   for op in spec.ops.iter() {
     img = match op {
       TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode).unwrap_or(img),
@@ -367,6 +410,9 @@ enum TargetFormat {
 pub struct AsyncTransform {
   spec: TransformSpec,
   target_format: TargetFormat,
+  // Premultiply the RGB channels by alpha before packing. Only used for raw
+  // pixel-buffer output; encoded output always stays straight.
+  premultiply_output: bool,
 }
 
 pub struct AsyncTransformResult {
@@ -380,10 +426,14 @@ impl napi::Task for AsyncTransform {
   type JsValue = ComputedImage;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
-    let img = render_image(&self.spec)?;
+    let mut img = render_image(&self.spec)?;
 
     let width = img.width();
     let height = img.height();
+
+    if self.premultiply_output {
+      img = premultiply_alpha(img);
+    }
 
     let pixels = encode_image(img, &self.target_format)?;
 
@@ -478,6 +528,10 @@ pub struct TransformSpec {
   height: u32,
   format: Option<PixelFormat>, // None means not a raw pixel buffer
 
+  // The source buffer has premultiplied alpha and must be straightened right
+  // after loading, so the internal pipeline always operates on straight alpha.
+  source_premultiplied: bool,
+
   ops: Vec<TransformOps>,
 }
 impl TransformSpec {
@@ -533,6 +587,20 @@ pub struct EncodingOptions {
   pub quality: Option<f64>,
 }
 
+#[napi(object)]
+pub struct LoadOptions {
+  /// The source buffer already has premultiplied alpha; straighten it on load so
+  /// the internal representation stays straight (non-premultiplied). Defaults to false.
+  pub premultiplied_alpha: Option<bool>,
+}
+
+#[napi(object)]
+pub struct BufferOptions {
+  /// Premultiply the RGB channels by the alpha channel in the output buffer.
+  /// For the `rgb` format this flattens the image over black. Defaults to false.
+  pub premultiply_alpha: Option<bool>,
+}
+
 #[napi(custom_finalize)]
 pub struct ImageTransformer {
   transformer: TransformSpec,
@@ -564,6 +632,7 @@ impl ImageTransformer {
     width: u32,
     height: u32,
     format: Option<PixelFormat>,
+    source_premultiplied: bool,
   ) -> napi::Result<Self> {
     let external_size = buffer.len() as i64;
     env.adjust_external_memory(external_size)?;
@@ -574,6 +643,7 @@ impl ImageTransformer {
         width,
         height,
         format,
+        source_premultiplied,
         ops: Vec::new(),
       },
       external_size,
@@ -589,6 +659,7 @@ impl ImageTransformer {
   /// @param width - Width of the image
   /// @param height - Height of the image
   /// @param format - Pixel format of the buffer
+  /// @param options - Optional load options (e.g. whether the source is premultiplied)
   #[napi(factory)]
   pub fn from_buffer(
     env: Env,
@@ -596,8 +667,19 @@ impl ImageTransformer {
     width: u32,
     height: u32,
     format: PixelFormat,
+    options: Option<LoadOptions>,
   ) -> napi::Result<Self> {
-    Self::new_tracked(&env, buffer.to_vec(), width, height, Some(format))
+    let source_premultiplied = options
+      .and_then(|opts| opts.premultiplied_alpha)
+      .unwrap_or(false);
+    Self::new_tracked(
+      &env,
+      buffer.to_vec(),
+      width,
+      height,
+      Some(format),
+      source_premultiplied,
+    )
   }
 
   /// Create an `ImageTransformer` from a `Buffer` or `Uint8Array` containing an encoded image
@@ -618,7 +700,7 @@ impl ImageTransformer {
       )
     })?;
 
-    Self::new_tracked(&env, image.to_vec(), dimensions.0, dimensions.1, None)
+    Self::new_tracked(&env, image.to_vec(), dimensions.0, dimensions.1, None, false)
   }
 
   /// Create an `ImageTransformer` from a data URL string (e.g., "data:image/png;base64,...")
@@ -675,7 +757,7 @@ impl ImageTransformer {
       )
     })?;
 
-    Self::new_tracked(&env, image_data, dimensions.0, dimensions.1, None)
+    Self::new_tracked(&env, image_data, dimensions.0, dimensions.1, None, false)
   }
 
   /// Add a scale step to the transform sequence
@@ -831,12 +913,26 @@ impl ImageTransformer {
   /// Danger: This is performed synchronously on the main thread, which can become a performance bottleneck. It is advised to use `toBuffer` whenever possible
   ///
   /// @param format - The pixel format to pack into the buffer
+  /// @param options - Optional buffer options (e.g. whether to premultiply alpha)
   #[napi]
-  pub fn to_buffer_sync(&self, _env: Env, format: PixelFormat) -> napi::Result<ComputedImage> {
-    let img = render_image(&self.transformer)?;
+  pub fn to_buffer_sync(
+    &self,
+    _env: Env,
+    format: PixelFormat,
+    options: Option<BufferOptions>,
+  ) -> napi::Result<ComputedImage> {
+    let premultiply_output = options
+      .and_then(|opts| opts.premultiply_alpha)
+      .unwrap_or(false);
+
+    let mut img = render_image(&self.transformer)?;
 
     let width = img.width();
     let height = img.height();
+
+    if premultiply_output {
+      img = premultiply_alpha(img);
+    }
 
     let pixels = encode_image(img, &TargetFormat::PixelBuffer(format))?;
 
@@ -850,15 +946,22 @@ impl ImageTransformer {
   /// Asynchronously convert the transformed image to a Buffer
   ///
   /// @param format - The pixel format to pack into the buffer
+  /// @param options - Optional buffer options (e.g. whether to premultiply alpha)
   #[napi(ts_return_type = "Promise<ComputedImage>")]
   pub fn to_buffer(
     &self,
     _env: Env,
     format: PixelFormat,
+    options: Option<BufferOptions>,
   ) -> napi::Result<AsyncTask<AsyncTransform>> {
+    let premultiply_output = options
+      .and_then(|opts| opts.premultiply_alpha)
+      .unwrap_or(false);
+
     let task: AsyncTransform = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: TargetFormat::PixelBuffer(format),
+      premultiply_output,
     };
 
     Ok(AsyncTask::new(task))
@@ -908,6 +1011,8 @@ impl ImageTransformer {
     let task = AsyncTransform {
       spec: self.transformer.clone(),
       target_format: TargetFormat::EncodedImage((format, quality)),
+      // Encoded output stays straight; premultiply is only for raw pixel buffers.
+      premultiply_output: false,
     };
 
     Ok(AsyncTask::new(task))

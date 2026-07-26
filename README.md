@@ -37,7 +37,7 @@ All image operations are performed via the `ImageTransformer` class. Transforms 
 
 ### Creating an `ImageTransformer`
 
-#### `ImageTransformer.fromBuffer(buffer, width, height, format)`
+#### `ImageTransformer.fromBuffer(buffer, width, height, format, options?)`
 
 Creates an `ImageTransformer` from a raw pixel buffer.
 
@@ -45,6 +45,11 @@ Creates an `ImageTransformer` from a raw pixel buffer.
 import { ImageTransformer } from '@julusian/image-rs'
 
 const transformer = ImageTransformer.fromBuffer(rawPixelBuffer, 1920, 1080, 'rgba')
+
+// If the buffer already has premultiplied alpha (e.g. from a GPU/canvas):
+const t2 = ImageTransformer.fromBuffer(premultBuffer, 1920, 1080, 'rgba', {
+  premultipliedAlpha: true,
+})
 ```
 
 **Parameters:**
@@ -52,6 +57,8 @@ const transformer = ImageTransformer.fromBuffer(rawPixelBuffer, 1920, 1080, 'rgb
 - `width: number` — Width of the image in pixels
 - `height: number` — Height of the image in pixels
 - `format: PixelFormat` — Pixel layout of the buffer (`'rgba'`, `'rgb'`, `'bgra'`, or `'bgr'`)
+- `options?: LoadOptions` — Optional load options
+  - `premultipliedAlpha?: boolean` — When `true`, the source buffer is treated as premultiplied and is straightened on load so all transforms operate on straight (non-premultiplied) alpha. Defaults to `false`. No effect on formats without an alpha channel.
 
 ---
 
@@ -214,7 +221,7 @@ const { width, height } = transformer.getCurrentDimensions()
 
 ### Output methods
 
-#### `.toBuffer(format)` / `.toBufferSync(format)`
+#### `.toBuffer(format, options?)` / `.toBufferSync(format, options?)`
 
 Executes the transform pipeline and returns a raw pixel buffer.
 
@@ -223,12 +230,18 @@ const result = await transformer.toBuffer('rgba')
 // result.buffer — Buffer of raw pixel data
 // result.width  — Width of the output image
 // result.height — Height of the output image
+
+// Premultiply on output. For 'rgb' this flattens the image over black,
+// so the alpha is reflected in the RGB values instead of being dropped:
+const flattened = await transformer.toBuffer('rgb', { premultiplyAlpha: true })
 ```
 
 > ⚠️ `toBufferSync` runs on the main thread and can block the event loop. Prefer `toBuffer` in production.
 
 **Parameters:**
 - `format: PixelFormat` — Desired pixel layout of the output buffer
+- `options?: BufferOptions` — Optional buffer options
+  - `premultiplyAlpha?: boolean` — When `true`, the RGB channels are premultiplied by alpha in the output. For `'rgb'` (which has no alpha channel) this flattens the image over black; otherwise the alpha is simply dropped at full intensity. Defaults to `false`. No effect on formats without an alpha channel. Only available on the raw pixel buffer output — encoded formats keep their own straight-alpha semantics.
 
 **Returns:** `Promise<ComputedImage>` (`toBuffer`) or `ComputedImage` (`toBufferSync`)
 
@@ -342,6 +355,28 @@ Options for encoded image output.
 ```ts
 interface EncodingOptions {
   quality?: number  // 0–100, applies to JPEG and WebP
+}
+```
+
+#### `LoadOptions`
+
+Options for `fromBuffer`.
+
+```ts
+interface LoadOptions {
+  // Source buffer already has premultiplied alpha; straighten it on load.
+  premultipliedAlpha?: boolean
+}
+```
+
+#### `BufferOptions`
+
+Options for `toBuffer` / `toBufferSync`.
+
+```ts
+interface BufferOptions {
+  // Premultiply RGB by alpha in the output. For 'rgb' this flattens over black.
+  premultiplyAlpha?: boolean
 }
 ```
 
