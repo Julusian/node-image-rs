@@ -700,7 +700,14 @@ impl ImageTransformer {
       )
     })?;
 
-    Self::new_tracked(&env, image.to_vec(), dimensions.0, dimensions.1, None, false)
+    Self::new_tracked(
+      &env,
+      image.to_vec(),
+      dimensions.0,
+      dimensions.1,
+      None,
+      false,
+    )
   }
 
   /// Create an `ImageTransformer` from a data URL string (e.g., "data:image/png;base64,...")
