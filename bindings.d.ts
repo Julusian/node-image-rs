@@ -36,6 +36,15 @@ export declare class ImageTransformer {
    */
   scale(width: number, height: number, mode?: ResizeMode | undefined | null): this
   /**
+   * Add a step to downscale by an integer factor, averaging each block of pixels in linear light
+   *
+   * This is intended for resolving an oversampled render. Unlike `scale`, it gives antialiased edges between
+   * contrasting colours the correct brightness, rather than a dark outline, and adds no halo around hard edges.
+   *
+   * @param factor - The amount to divide the width and height by. They must both be a multiple of it
+   */
+  downsample(factor: number): this
+  /**
    * Add a crop step to the transform sequence
    *
    * @param x - X offset for the crop

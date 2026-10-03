@@ -3,7 +3,7 @@
 mod image_rs_copy;
 
 use std::io::Cursor;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use base64::{Engine as _, engine::general_purpose};
 use image::{
@@ -141,6 +141,87 @@ fn resize_image(
     }
     ResizeMode::Fit => Some(img.resize(width, height, image::imageops::FilterType::Lanczos3)),
   }
+}
+
+// sRGB byte -> linear light (0-1)
+static SRGB_TO_LINEAR: LazyLock<[f32; 256]> = LazyLock::new(|| {
+  std::array::from_fn(|i| {
+    let c = i as f32 / 255.0;
+    if c <= 0.04045 {
+      c / 12.92
+    } else {
+      ((c + 0.055) / 1.055).powf(2.4)
+    }
+  })
+});
+
+// Linear light, quantised to 16 bits, -> sRGB byte. Fine enough that dark tones don't band
+const LINEAR_LUT_MAX: f32 = 65535.0;
+static LINEAR_TO_SRGB: LazyLock<Vec<u8>> = LazyLock::new(|| {
+  (0..=LINEAR_LUT_MAX as u32)
+    .map(|i| {
+      let c = i as f32 / LINEAR_LUT_MAX;
+      let srgb = if c <= 0.0031308 {
+        c * 12.92
+      } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+      };
+      (srgb * 255.0).round() as u8
+    })
+    .collect()
+});
+
+// Downscale by an integer factor, averaging each block of pixels in linear light.
+// This is intended for resolving an oversampled render: averaging the sRGB values (as the resize filters do)
+// makes antialiased edges between contrasting colours darker than either colour, giving shapes a dark outline,
+// and the negative lobes of Lanczos add a halo around hard edges.
+// Colours are weighted by alpha, so fully transparent pixels don't darken the edges of what they surround.
+fn downsample_linear(img: DynamicImage, factor: u32) -> DynamicImage {
+  if factor == 1 {
+    return img;
+  }
+
+  let src = img.into_rgba8();
+  let src_width = src.width() as usize;
+  let src_pixels = src.as_raw();
+  let factor = factor as usize;
+  let dst_width = src_width / factor;
+  let dst_height = src.height() as usize / factor;
+  let block_size = (factor * factor) as f32;
+
+  let to_linear = &*SRGB_TO_LINEAR;
+  let to_srgb = &*LINEAR_TO_SRGB;
+  let encode = |sum: f32, alpha: f32| to_srgb[((sum / alpha) * LINEAR_LUT_MAX).round() as usize];
+
+  let mut dst = vec![0u8; dst_width * dst_height * 4];
+  for dy in 0..dst_height {
+    for dx in 0..dst_width {
+      let (mut r, mut g, mut b, mut a) = (0f32, 0f32, 0f32, 0f32);
+      for sy in dy * factor..(dy + 1) * factor {
+        let row_start = (sy * src_width + dx * factor) * 4;
+        for px in src_pixels[row_start..row_start + factor * 4].chunks_exact(4) {
+          let alpha = px[3] as f32;
+          r += to_linear[px[0] as usize] * alpha;
+          g += to_linear[px[1] as usize] * alpha;
+          b += to_linear[px[2] as usize] * alpha;
+          a += alpha;
+        }
+      }
+
+      if a > 0.0 {
+        let o = (dy * dst_width + dx) * 4;
+        dst[o] = encode(r, a);
+        dst[o + 1] = encode(g, a);
+        dst[o + 2] = encode(b, a);
+        dst[o + 3] = (a / block_size).round() as u8;
+      }
+    }
+  }
+
+  DynamicImage::from(
+    RgbaImage::from_raw(dst_width as u32, dst_height as u32, dst)
+      .expect("downsampled buffer has the expected size"),
+  )
 }
 
 fn crop_image(
@@ -362,6 +443,7 @@ fn render_image(spec: &TransformSpec) -> napi::Result<DynamicImage> {
   for op in spec.ops.iter() {
     img = match op {
       TransformOps::Scale(op) => resize_image(&img, op.width, op.height, &op.mode).unwrap_or(img),
+      TransformOps::Downsample(factor) => downsample_linear(img, *factor),
       TransformOps::Crop(op) => {
         crop_image(&img, op.width, op.height, Some((op.x, op.y)))?.unwrap_or(img)
       }
@@ -512,6 +594,7 @@ pub struct PadOp {
 #[derive(Clone)]
 pub enum TransformOps {
   Scale(ScaleOp),
+  Downsample(u32),
   Crop(CropOp),
   CropCenter(CropCenterOp),
   Pad(PadOp),
@@ -549,6 +632,7 @@ impl TransformSpec {
             image_rs_copy::resize_dimensions(size.0, size.1, op.width, op.height, false)
           }
         },
+        TransformOps::Downsample(factor) => (size.0 / factor, size.1 / factor),
         TransformOps::Crop(op) => (op.width, op.height),
         TransformOps::CropCenter(op) => (op.width, op.height),
         TransformOps::Pad(op) => (size.0 + op.left + op.right, size.1 + op.top + op.bottom),
@@ -787,6 +871,31 @@ impl ImageTransformer {
         height,
         mode: mode.unwrap_or(ResizeMode::Exact),
       }));
+
+      Ok(self)
+    }
+  }
+
+  /// Add a step to downscale by an integer factor, averaging each block of pixels in linear light
+  ///
+  /// This is intended for resolving an oversampled render. Unlike `scale`, it gives antialiased edges between
+  /// contrasting colours the correct brightness, rather than a dark outline, and adds no halo around hard edges.
+  ///
+  /// @param factor - The amount to divide the width and height by. They must both be a multiple of it
+  #[napi]
+  pub fn downsample(&mut self, factor: u32) -> napi::Result<&Self> {
+    let current_size = self.transformer.get_current_size();
+
+    if factor == 0
+      || !current_size.0.is_multiple_of(factor)
+      || !current_size.1.is_multiple_of(factor)
+    {
+      Err(Error::new(
+        Status::GenericFailure,
+        "Image dimensions must be a multiple of the downsample factor",
+      ))
+    } else {
+      self.transformer.ops.push(TransformOps::Downsample(factor));
 
       Ok(self)
     }

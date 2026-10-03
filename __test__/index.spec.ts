@@ -1443,3 +1443,156 @@ describe("premultiplied alpha", () => {
     );
   });
 });
+
+describe("downsample", () => {
+  type RGBA = [number, number, number, number];
+
+  const BLACK: RGBA = [0, 0, 0, 255];
+  const WHITE: RGBA = [255, 255, 255, 255];
+  const GREEN: RGBA = [0, 255, 0, 255];
+  const MAGENTA: RGBA = [255, 64, 255, 255];
+  const CLEAR: RGBA = [0, 0, 0, 0];
+
+  /** Build an image from a grid of pixels, given row by row */
+  function makeImage(rows: RGBA[][]) {
+    const height = rows.length;
+    const width = rows[0].length;
+    const buffer = Buffer.alloc(width * height * 4);
+    rows.forEach((row, y) =>
+      row.forEach((px, x) => buffer.set(px, (y * width + x) * 4)),
+    );
+    return ImageTransformer.fromBuffer(buffer, width, height, "rgba");
+  }
+
+  function pixels(buffer: Buffer): RGBA[] {
+    const res: RGBA[] = [];
+    for (let i = 0; i < buffer.length; i += 4) {
+      res.push([buffer[i], buffer[i + 1], buffer[i + 2], buffer[i + 3]]);
+    }
+    return res;
+  }
+
+  function linearLuminance([r, g, b]: number[]): number {
+    const lin = [r, g, b].map((v) =>
+      v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4,
+    );
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+
+  it("divides the dimensions by the factor", () => {
+    const transformer = ImageTransformer.fromBuffer(
+      generateSolidColorImage(12, 8, 255, 0, 0, 255, "rgba"),
+      12,
+      8,
+      "rgba",
+    ).downsample(4);
+    expect(transformer.getCurrentDimensions()).toEqual({ width: 3, height: 2 });
+    const result = transformer.toBufferSync("rgba");
+    expect(result.width).toBe(3);
+    expect(result.height).toBe(2);
+  });
+
+  it("factor 1 leaves the image unchanged", () => {
+    const result = makeImage([[GREEN, MAGENTA]])
+      .downsample(1)
+      .toBufferSync("rgba");
+    expect(pixels(result.buffer)).toEqual([GREEN, MAGENTA]);
+  });
+
+  it("keeps a solid colour exact", () => {
+    const result = makeImage([
+      [MAGENTA, MAGENTA],
+      [MAGENTA, MAGENTA],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    expect(pixels(result.buffer)).toEqual([MAGENTA]);
+  });
+
+  it("averages in linear light, not sRGB", () => {
+    const result = makeImage([
+      [BLACK, WHITE],
+      [WHITE, BLACK],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    // Half black, half white is 50% linear light, which is sRGB 188 (an sRGB average would give 128)
+    expect(pixels(result.buffer)).toEqual([[188, 188, 188, 255]]);
+  });
+
+  it("an edge between contrasting colours is not darker than both", () => {
+    const result = makeImage([
+      [GREEN, MAGENTA],
+      [GREEN, MAGENTA],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    const [edge] = pixels(result.buffer);
+    expect(linearLuminance(edge)).toBeGreaterThan(
+      Math.min(linearLuminance(GREEN), linearLuminance(MAGENTA)),
+    );
+  });
+
+  it("transparent pixels do not darken the colour, but reduce the alpha", () => {
+    const result = makeImage([
+      [GREEN, CLEAR],
+      [CLEAR, CLEAR],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    expect(pixels(result.buffer)).toEqual([[0, 255, 0, 64]]);
+  });
+
+  it("a fully transparent block stays fully transparent", () => {
+    const result = makeImage([
+      [CLEAR, CLEAR],
+      [CLEAR, CLEAR],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    expect(pixels(result.buffer)).toEqual([CLEAR]);
+  });
+
+  it("downsamples each block independently", () => {
+    const result = makeImage([
+      [BLACK, BLACK, WHITE, WHITE],
+      [BLACK, BLACK, WHITE, WHITE],
+    ])
+      .downsample(2)
+      .toBufferSync("rgba");
+    expect(pixels(result.buffer)).toEqual([BLACK, WHITE]);
+  });
+
+  it("works on rgb sources", () => {
+    const result = ImageTransformer.fromBuffer(
+      Buffer.from([0, 0, 0, 255, 255, 255, 255, 255, 255, 0, 0, 0]),
+      2,
+      2,
+      "rgb",
+    )
+      .downsample(2)
+      .toBufferSync("rgb");
+    expect([...result.buffer]).toEqual([188, 188, 188]);
+  });
+
+  it("applies in sequence with the other operations", async () => {
+    const result = await makeImage([
+      [BLACK, BLACK, WHITE, WHITE],
+      [BLACK, BLACK, WHITE, WHITE],
+    ])
+      .downsample(2)
+      .rotate("CW90")
+      .toBuffer("rgba");
+    expect(result.width).toBe(1);
+    expect(result.height).toBe(2);
+    expect(pixels(result.buffer)).toEqual([BLACK, WHITE]);
+  });
+
+  it("rejects dimensions that are not a multiple of the factor", () => {
+    expect(() => makeImage([[GREEN, GREEN, GREEN]]).downsample(2)).toThrow();
+  });
+
+  it("rejects a factor of 0", () => {
+    expect(() => makeImage([[GREEN]]).downsample(0)).toThrow();
+  });
+});
