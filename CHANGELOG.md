@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.0](https://github.com/Julusian/node-image-rs/compare/v2.2.0...v2.3.0) (2026-10-03)
+
+
+### Features
+
+* add downsample method ([a61d227](https://github.com/Julusian/node-image-rs/commit/a61d227ef511f3b6f443753cc2bf93d9c3cc471e))
+
+
+### Bug Fixes
+
+* clippy warnings ([aaa84f5](https://github.com/Julusian/node-image-rs/commit/aaa84f5a77c1aa759ae0bfd06229fa67a9fbf5f0))
+
 ## [2.2.0](https://github.com/Julusian/node-image-rs/compare/v2.1.1...v2.2.0) (2026-07-26)
 
 
