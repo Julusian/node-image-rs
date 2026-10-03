@@ -199,7 +199,8 @@ fn downsample_linear(img: DynamicImage, factor: u32) -> DynamicImage {
       let (mut r, mut g, mut b, mut a) = (0f32, 0f32, 0f32, 0f32);
       for sy in dy * factor..(dy + 1) * factor {
         let row_start = (sy * src_width + dx * factor) * 4;
-        for px in src_pixels[row_start..row_start + factor * 4].chunks_exact(4) {
+        let (row_px, _) = src_pixels[row_start..row_start + factor * 4].as_chunks::<4>();
+        for px in row_px {
           let alpha = px[3] as f32;
           r += to_linear[px[0] as usize] * alpha;
           g += to_linear[px[1] as usize] * alpha;
@@ -305,13 +306,13 @@ fn overlay_image(
 // large bgr(a) buffers is hot; for small images (e.g. Stream Deck buttons) the
 // absolute cost is already negligible. Revisit with the AVX2 numbers above.
 fn swizzle_24(data: &mut [u8]) {
-  for chunk in data.chunks_exact_mut(3) {
+  for chunk in data.as_chunks_mut::<3>().0 {
     chunk.swap(0, 2);
   }
 }
 // See `swizzle_24` for the performance analysis (same conclusion applies).
 fn swizzle_32(data: &mut [u8]) {
-  for chunk in data.chunks_exact_mut(4) {
+  for chunk in data.as_chunks_mut::<4>().0 {
     chunk.swap(0, 2);
   }
 }
