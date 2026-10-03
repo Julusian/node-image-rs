@@ -25,9 +25,9 @@
   "devDependencies": {
     "@napi-rs/cli": "^3.7.2",
     "@types/node": "^20.19.43",
-    "prettier": "^3.9.3",
+    "prettier": "^3.9.9",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.18"
