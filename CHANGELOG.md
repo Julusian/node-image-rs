@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/Julusian/node-image-rs/compare/v2.3.0...v2.4.0) (2026-10-18)
+
+
+### Features
+
+* add decodeFrames for animated GIF, APNG and WebP ([be60f16](https://github.com/Julusian/node-image-rs/commit/be60f162f5d659f17037e5fbe694c846aff42d43))
+
 ## [2.3.0](https://github.com/Julusian/node-image-rs/compare/v2.2.0...v2.3.0) (2026-10-03)
 
 
