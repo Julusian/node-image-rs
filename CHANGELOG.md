@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/Julusian/node-image-rs/compare/v2.4.0...v2.5.0) (2026-10-18)
+
+
+### Features
+
+* add maxBytes and animatedOnly options to decodeFrames ([ea00f1a](https://github.com/Julusian/node-image-rs/commit/ea00f1a5d5267935a86e4c5ee204a2408600e3f5))
+
 ## [2.4.0](https://github.com/Julusian/node-image-rs/compare/v2.3.0...v2.4.0) (2026-10-18)
 
 
