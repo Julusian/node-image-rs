@@ -171,12 +171,13 @@ export interface DecodedFrames {
 }
 
 /**
- * Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame
+ * Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame,
+ * or give `null` when `animatedOnly` is set
  *
  * @param input - The encoded image, or a data URL string (e.g., "data:image/gif;base64,...")
  * @param options - Optional sampling, scaling and length limits
  */
-export declare function decodeFrames(input: Uint8Array | string, options?: DecodeFramesOptions | undefined | null): Promise<DecodedFrames>
+export declare function decodeFrames(input: Uint8Array | string, options?: DecodeFramesOptions | undefined | null): Promise<DecodedFrames | null>
 
 export interface DecodeFramesOptions {
   /** Downscale each frame to fit within this width. Images are never upscaled */
@@ -190,6 +191,16 @@ export interface DecodeFramesOptions {
   sampleIntervalMs?: number
   /** Stop decoding once the animation reaches this length */
   maxDurationMs?: number
+  /**
+   * Limit on the size of the returned `buffer`. Frames are downscaled further, keeping their aspect ratio,
+   * until all of them fit. This is done in a single pass, without decoding any frame twice
+   */
+  maxBytes?: number
+  /**
+   * Resolve to `null` for an image which isn't animated, without decoding its pixels where possible.
+   * An animation with fewer than 2 frames left after sampling also gives `null`
+   */
+  animatedOnly?: boolean
 }
 
 export interface EncodingOptions {

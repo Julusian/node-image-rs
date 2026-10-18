@@ -308,7 +308,7 @@ const dataUrl = await transformer.toDataUrl("png");
 
 #### `decodeFrames(input, options?)`
 
-Decodes every frame of an animated GIF, APNG or WebP. Any other image is decoded as a single frame.
+Decodes every frame of an animated GIF, APNG or WebP. Any other image is decoded as a single frame, or gives `null` with `animatedOnly`.
 
 ```ts
 import { decodeFrames } from "@julusian/image-rs";
@@ -324,6 +324,17 @@ const sampled = await decodeFrames(dataUrl, {
   maxDurationMs: 30_000,
 });
 
+// Only animations, capped at 32MB in total
+const animation = await decodeFrames(input, {
+  sampleIntervalMs: 100,
+  maxDurationMs: 30_000,
+  maxBytes: 32 * 1024 * 1024,
+  animatedOnly: true,
+});
+if (animation === null) {
+  // Not animated
+}
+
 const frameSize = sampled.width * sampled.height * 4;
 const firstFrame = sampled.buffer.subarray(0, frameSize);
 ```
@@ -335,10 +346,12 @@ const firstFrame = sampled.buffer.subarray(0, frameSize);
   - `maxWidth?: number` / `maxHeight?: number` — Downscale each frame to fit within these limits, preserving the aspect ratio. Images are never upscaled
   - `sampleIntervalMs?: number` — Resample the animation onto a fixed grid of this many ms. Each tick shows whichever frame is on screen at that moment, so a fast animation drops frames but keeps its real speed, and slow frames are held for several ticks. Frames which are dropped are never kept or scaled. When omitted, every frame is kept
   - `maxDurationMs?: number` — Stop decoding once the animation reaches this length
+  - `maxBytes?: number` — Limit on the size of `buffer`. Applied after `maxWidth`/`maxHeight`: when the next frame would go over the limit, the frames kept so far are downscaled (keeping the aspect ratio) so they fit in half of it, and the rest are decoded at that size. This happens in a single pass, so no frame is decoded twice. Frames never go below 1x1
+  - `animatedOnly?: boolean` — Give `null` for an image which isn't animated. A static PNG or WebP, or any other format, is recognised from its header without decoding the pixels. An animation (including a single-frame GIF) also gives `null` when fewer than 2 frames are left after sampling
 
 Like browsers, frame delays of 10ms or less are treated as 100ms.
 
-**Returns:** `Promise<DecodedFrames>`
+**Returns:** `Promise<DecodedFrames | null>` — `null` only when `animatedOnly` is set
 
 - `width` / `height` — Size of every frame
 - `frameCount` — Number of frames

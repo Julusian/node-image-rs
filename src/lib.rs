@@ -1197,6 +1197,12 @@ pub struct DecodeFramesOptions {
   pub sample_interval_ms: Option<u32>,
   /// Stop decoding once the animation reaches this length
   pub max_duration_ms: Option<u32>,
+  /// Limit on the size of the returned `buffer`. Frames are downscaled further, keeping their aspect ratio,
+  /// until all of them fit. This is done in a single pass, without decoding any frame twice
+  pub max_bytes: Option<i64>,
+  /// Resolve to `null` for an image which isn't animated, without decoding its pixels where possible.
+  /// An animation with fewer than 2 frames left after sampling also gives `null`
+  pub animated_only: Option<bool>,
 }
 
 #[napi(object)]
@@ -1219,8 +1225,8 @@ pub struct AsyncDecodeFrames {
 }
 
 impl napi::Task for AsyncDecodeFrames {
-  type Output = frames::DecodedFramesData;
-  type JsValue = DecodedFrames;
+  type Output = Option<frames::DecodedFramesData>;
+  type JsValue = Option<DecodedFrames>;
 
   fn compute(&mut self) -> napi::Result<Self::Output> {
     let decoded_url;
@@ -1236,22 +1242,23 @@ impl napi::Task for AsyncDecodeFrames {
   }
 
   fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
-    Ok(DecodedFrames {
+    Ok(output.map(|output| DecodedFrames {
       width: output.width,
       height: output.height,
       frame_count: output.frame_start_ms.len() as u32,
       frame_start_ms: output.frame_start_ms,
       duration_ms: output.duration_ms,
       buffer: output.buffer.into(),
-    })
+    }))
   }
 }
 
-/// Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame
+/// Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame,
+/// or give `null` when `animatedOnly` is set
 ///
 /// @param input - The encoded image, or a data URL string (e.g., "data:image/gif;base64,...")
 /// @param options - Optional sampling, scaling and length limits
-#[napi(ts_return_type = "Promise<DecodedFrames>")]
+#[napi(ts_return_type = "Promise<DecodedFrames | null>")]
 pub fn decode_frames(
   input: Either<Uint8Array, String>,
   options: Option<DecodeFramesOptions>,
@@ -1261,19 +1268,21 @@ pub fn decode_frames(
     Either::B(data_url) => Either::B(data_url),
   };
 
-  let spec = match options {
-    Some(opts) => frames::DecodeFramesSpec {
-      max_width: opts.max_width,
-      max_height: opts.max_height,
-      sample_interval_ms: opts.sample_interval_ms,
-      max_duration_ms: opts.max_duration_ms,
-    },
-    None => frames::DecodeFramesSpec {
-      max_width: None,
-      max_height: None,
-      sample_interval_ms: None,
-      max_duration_ms: None,
-    },
+  let opts = options.unwrap_or(DecodeFramesOptions {
+    max_width: None,
+    max_height: None,
+    sample_interval_ms: None,
+    max_duration_ms: None,
+    max_bytes: None,
+    animated_only: None,
+  });
+  let spec = frames::DecodeFramesSpec {
+    max_width: opts.max_width,
+    max_height: opts.max_height,
+    sample_interval_ms: opts.sample_interval_ms,
+    max_duration_ms: opts.max_duration_ms,
+    max_bytes: opts.max_bytes.map(|max| max.max(0) as u64),
+    animated_only: opts.animated_only.unwrap_or(false),
   };
 
   Ok(AsyncTask::new(AsyncDecodeFrames { input, spec }))

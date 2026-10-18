@@ -16,6 +16,10 @@ pub struct DecodeFramesSpec {
   /// Resample the animation onto a fixed grid of this many ms. When None, every frame is kept
   pub sample_interval_ms: Option<u32>,
   pub max_duration_ms: Option<u32>,
+  /// Limit on the size of the returned buffer. Frames are downscaled further as needed to fit
+  pub max_bytes: Option<u64>,
+  /// Give None for an image which isn't animated, without decoding it where possible
+  pub animated_only: bool,
 }
 
 #[derive(Debug)]
@@ -114,6 +118,37 @@ fn target_size(
   }
 }
 
+// Shrink to at most `max_pixels`, keeping the aspect ratio of `base`. Never grows past `current`, nor
+// goes below 1x1
+fn shrink_to_pixels(base: (u32, u32), current: (u32, u32), max_pixels: u64) -> (u32, u32) {
+  let scale = (max_pixels as f64 / (base.0 as f64 * base.1 as f64)).sqrt();
+  let width = ((base.0 as f64 * scale).floor() as u32).clamp(1, current.0);
+  let height = ((base.1 as f64 * scale).floor() as u32).clamp(1, current.1);
+  // When one side is clamped to 1, the other must give way so the total still fits
+  let width = width.min((max_pixels / height as u64).clamp(1, u32::MAX as u64) as u32);
+  let height = height.min((max_pixels / width as u64).clamp(1, u32::MAX as u64) as u32);
+  (width, height)
+}
+
+fn frame_bytes((width, height): (u32, u32)) -> u64 {
+  width as u64 * height as u64 * 4
+}
+
+// Rescale the frames already in the buffer to a smaller size, in place. Each frame is written no further
+// along than where it was read from, so it never overwrites a frame which hasn't been rescaled yet
+fn rescale_frames(buffer: &mut Vec<u8>, count: usize, from: (u32, u32), to: (u32, u32)) {
+  let from_len = frame_bytes(from) as usize;
+  let to_len = frame_bytes(to) as usize;
+  for i in 0..count {
+    let src = &buffer[i * from_len..(i + 1) * from_len];
+    let img = image::ImageBuffer::<image::Rgba<u8>, &[u8]>::from_raw(from.0, from.1, src)
+      .expect("frame is the expected size");
+    let scaled = resize(&img, to.0, to.1, FilterType::Lanczos3);
+    buffer[i * to_len..(i + 1) * to_len].copy_from_slice(scaled.as_raw());
+  }
+  buffer.truncate(count * to_len);
+}
+
 fn scale_frame(img: RgbaImage, width: u32, height: u32) -> RgbaImage {
   if img.width() == width && img.height() == height {
     img
@@ -159,7 +194,13 @@ fn decode_static(data: &[u8], spec: &DecodeFramesSpec) -> Result<DecodedFramesDa
     .map_err(|_e| "Failed to decode image from buffer".to_string())?
     .into_rgba8();
 
-  let (width, height) = target_size(img.width(), img.height(), spec.max_width, spec.max_height);
+  let mut size = target_size(img.width(), img.height(), spec.max_width, spec.max_height);
+  if let Some(max_bytes) = spec.max_bytes
+    && frame_bytes(size) > max_bytes
+  {
+    size = shrink_to_pixels(size, size, max_bytes / 4);
+  }
+  let (width, height) = size;
   let img = scale_frame(img, width, height);
 
   Ok(DecodedFramesData {
@@ -174,17 +215,22 @@ fn decode_static(data: &[u8], spec: &DecodeFramesSpec) -> Result<DecodedFramesDa
 pub(crate) fn decode_frames(
   data: &[u8],
   spec: &DecodeFramesSpec,
-) -> Result<DecodedFramesData, String> {
+) -> Result<Option<DecodedFramesData>, String> {
   let format =
     image::guess_format(data).map_err(|_e| "Failed to determine image format".to_string())?;
 
   let Some(frames) = animation_frames(data, format)? else {
-    return decode_static(data, spec);
+    if spec.animated_only {
+      return Ok(None);
+    }
+    return decode_static(data, spec).map(Some);
   };
 
   let tick_ms = spec.sample_interval_ms.unwrap_or(1).max(1);
   let mut sampler = FrameSampler::new(tick_ms, spec.max_duration_ms);
 
+  // The size after the width and height limits, and the size frames are currently kept at
+  let mut base_size: Option<(u32, u32)> = None;
   let mut size: Option<(u32, u32)> = None;
   let mut frame_start_ms: Vec<u32> = Vec::new();
   let mut buffer: Vec<u8> = Vec::new();
@@ -207,12 +253,36 @@ pub(crate) fn decode_frames(
     };
 
     let img = frame.into_buffer();
-    let (width, height) = *size.get_or_insert_with(|| {
+    let base = *base_size.get_or_insert_with(|| {
       target_size(img.width(), img.height(), spec.max_width, spec.max_height)
     });
-    let img = scale_frame(img, width, height);
+    let mut current = size.unwrap_or(base);
+
+    // When this frame would go over the limit, shrink so everything so far fits in half of it. That leaves
+    // room for as many frames again before the next shrink
+    let count = frame_start_ms.len() as u64 + 1;
+    if let Some(max_bytes) = spec.max_bytes
+      && count * frame_bytes(current) > max_bytes
+    {
+      let shrunk = shrink_to_pixels(base, current, max_bytes / 2 / 4 / count);
+      if shrunk != current {
+        rescale_frames(&mut buffer, frame_start_ms.len(), current, shrunk);
+        current = shrunk;
+      }
+    }
+    size = Some(current);
+
+    let img = scale_frame(img, current.0, current.1);
 
     frame_start_ms.push((start_tick * tick_ms as u64) as u32);
+    if let Some(max_bytes) = spec.max_bytes {
+      // Avoid the usual doubling overshooting the limit by far
+      let needed = buffer.len() + img.as_raw().len();
+      if needed > buffer.capacity() {
+        let target = (buffer.capacity() * 2).min(max_bytes as usize).max(needed);
+        buffer.reserve_exact(target - buffer.len());
+      }
+    }
     buffer.extend_from_slice(img.as_raw());
   }
 
@@ -220,13 +290,20 @@ pub(crate) fn decode_frames(
     return Err("Image contains no frames".to_string());
   };
 
-  Ok(DecodedFramesData {
+  if spec.animated_only && frame_start_ms.len() < 2 {
+    return Ok(None);
+  }
+
+  // Shrinking leaves spare capacity behind
+  buffer.shrink_to_fit();
+
+  Ok(Some(DecodedFramesData {
     width,
     height,
     frame_start_ms,
     duration_ms: (sampler.loop_ticks() * tick_ms as u64) as u32,
     buffer,
-  })
+  }))
 }
 
 #[cfg(test)]
@@ -359,16 +436,27 @@ mod tests {
       max_height: None,
       sample_interval_ms,
       max_duration_ms: None,
+      max_bytes: None,
+      animated_only: false,
     }
   }
 
   fn make_gif(delays_ms: &[u32]) -> Vec<u8> {
+    make_gif_sized(8, 4, delays_ms)
+  }
+
+  fn make_gif_sized(width: u32, height: u32, delays_ms: &[u32]) -> Vec<u8> {
     let mut bytes = Vec::new();
     {
       let mut encoder = GifEncoder::new(&mut bytes);
       encoder.set_repeat(Repeat::Infinite).unwrap();
       for (i, delay) in delays_ms.iter().enumerate() {
-        let frame = Frame::from_parts(solid(8, 4, i), 0, 0, Delay::from_numer_denom_ms(*delay, 1));
+        let frame = Frame::from_parts(
+          solid(width, height, i),
+          0,
+          0,
+          Delay::from_numer_denom_ms(*delay, 1),
+        );
         encoder.encode_frame(frame).unwrap();
       }
     }
@@ -462,22 +550,22 @@ mod tests {
   #[test]
   fn decode_gif() {
     let data = make_gif(&[100, 200, 100]);
-    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap());
-    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap().unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap().unwrap());
   }
 
   #[test]
   fn decode_apng() {
     let data = make_apng(&[100, 200, 100]);
-    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap());
-    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap().unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap().unwrap());
   }
 
   #[test]
   fn decode_animated_webp() {
     let data = make_animated_webp(&[100, 200, 100]);
-    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap());
-    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(None)).unwrap().unwrap());
+    assert_three_frames(&decode_frames(&data, &spec(Some(100))).unwrap().unwrap());
   }
 
   #[test]
@@ -485,11 +573,11 @@ mod tests {
     // GIF delays are in units of 10ms
     let data = make_gif(&[30; 10]);
 
-    let all = decode_frames(&data, &spec(None)).unwrap();
+    let all = decode_frames(&data, &spec(None)).unwrap().unwrap();
     assert_eq!(all.frame_start_ms.len(), 10);
     assert_eq!(all.duration_ms, 300);
 
-    let sampled = decode_frames(&data, &spec(Some(100))).unwrap();
+    let sampled = decode_frames(&data, &spec(Some(100))).unwrap().unwrap();
     assert_eq!(sampled.frame_start_ms, vec![0, 100, 200]);
     assert_eq!(sampled.duration_ms, 300);
     assert_eq!(frame_pixel(&sampled, 1), colour(3).0);
@@ -506,8 +594,11 @@ mod tests {
         max_height: Some(4),
         sample_interval_ms: Some(100),
         max_duration_ms: Some(1000),
+        max_bytes: None,
+        animated_only: false,
       },
     )
+    .unwrap()
     .unwrap();
     assert_eq!((result.width, result.height), (4, 2));
     assert_eq!(result.frame_start_ms, vec![0, 300, 600, 900]);
@@ -527,7 +618,7 @@ mod tests {
       )
       .unwrap();
 
-    let result = decode_frames(&data, &spec(Some(100))).unwrap();
+    let result = decode_frames(&data, &spec(Some(100))).unwrap().unwrap();
     assert_eq!((result.width, result.height), (8, 4));
     assert_eq!(result.frame_start_ms, vec![0]);
     assert_eq!(result.duration_ms, 0);
@@ -546,7 +637,7 @@ mod tests {
       )
       .unwrap();
 
-    let result = decode_frames(&data, &spec(None)).unwrap();
+    let result = decode_frames(&data, &spec(None)).unwrap().unwrap();
     assert_eq!(result.frame_start_ms, vec![0]);
     assert_eq!(result.duration_ms, 0);
     assert_eq!(frame_pixel(&result, 0), colour(2).0);
@@ -555,5 +646,190 @@ mod tests {
   #[test]
   fn decode_rejects_garbage() {
     assert!(decode_frames(b"not an image", &spec(None)).is_err());
+  }
+
+  fn make_png(width: u32, height: u32) -> Vec<u8> {
+    let mut data = Vec::new();
+    image::codecs::png::PngEncoder::new(&mut data)
+      .write_image(
+        solid(width, height, 1).as_raw(),
+        width,
+        height,
+        image::ExtendedColorType::Rgba8,
+      )
+      .unwrap();
+    data
+  }
+
+  fn spec_with(f: impl FnOnce(&mut DecodeFramesSpec)) -> DecodeFramesSpec {
+    let mut spec = spec(Some(100));
+    f(&mut spec);
+    spec
+  }
+
+  fn assert_close(actual: [u8; 4], expected: Rgba<u8>) {
+    for (a, e) in actual.iter().zip(expected.0) {
+      assert!(a.abs_diff(e) <= 1, "{actual:?} != {expected:?}");
+    }
+  }
+
+  #[test]
+  fn shrink_to_pixels_fits() {
+    assert_eq!(shrink_to_pixels((64, 32), (64, 32), 1000), (44, 22));
+    // Never grows past the current size
+    assert_eq!(shrink_to_pixels((64, 32), (10, 5), 1000), (10, 5));
+    // Very wide images still fit once the short side reaches 1
+    assert_eq!(shrink_to_pixels((1000, 1), (1000, 1), 100), (100, 1));
+    assert_eq!(shrink_to_pixels((1, 1000), (1, 1000), 100), (1, 100));
+    // Never below 1x1
+    assert_eq!(shrink_to_pixels((64, 32), (64, 32), 0), (1, 1));
+  }
+
+  #[test]
+  fn max_bytes_shrinks_in_one_pass() {
+    let data = make_gif_sized(64, 32, &[100; 20]);
+    let unlimited = decode_frames(&data, &spec(Some(100))).unwrap().unwrap();
+    assert_eq!(unlimited.buffer.len(), 20 * 64 * 32 * 4);
+
+    // 64x32 fits 4 frames. Shrinks to 44x22 at the 5th frame, then to 30x15 at the 11th
+    let max_bytes = 40_000;
+    let limited = decode_frames(&data, &spec_with(|s| s.max_bytes = Some(max_bytes)))
+      .unwrap()
+      .unwrap();
+    assert_eq!((limited.width, limited.height), (30, 15));
+    assert!(limited.buffer.len() as u64 <= max_bytes);
+    assert_eq!(
+      limited.buffer.len(),
+      20 * (limited.width * limited.height * 4) as usize
+    );
+    assert_eq!(limited.frame_start_ms, unlimited.frame_start_ms);
+    assert_eq!(limited.duration_ms, unlimited.duration_ms);
+    // Frames kept before each shrink were rescaled, rather than decoded again
+    for i in 0..20 {
+      assert_close(frame_pixel(&limited, i), colour(i));
+    }
+  }
+
+  #[test]
+  fn max_bytes_unchanged_when_it_fits() {
+    let data = make_gif_sized(64, 32, &[100; 5]);
+    let result = decode_frames(&data, &spec_with(|s| s.max_bytes = Some(5 * 64 * 32 * 4)))
+      .unwrap()
+      .unwrap();
+    assert_eq!((result.width, result.height), (64, 32));
+    assert_eq!(result.frame_start_ms.len(), 5);
+  }
+
+  #[test]
+  fn max_bytes_after_max_size() {
+    let data = make_gif_sized(64, 32, &[100; 20]);
+    let max_bytes = 20_000;
+    let result = decode_frames(
+      &data,
+      &spec_with(|s| {
+        s.max_width = Some(32);
+        s.max_height = Some(32);
+        s.max_bytes = Some(max_bytes);
+      }),
+    )
+    .unwrap()
+    .unwrap();
+    assert!(result.width < 32);
+    assert_eq!(result.width, result.height * 2);
+    assert!(result.buffer.len() as u64 <= max_bytes);
+    assert_eq!(result.frame_start_ms.len(), 20);
+  }
+
+  #[test]
+  fn max_bytes_never_below_one_pixel() {
+    let data = make_gif_sized(64, 32, &[100; 3]);
+    let result = decode_frames(&data, &spec_with(|s| s.max_bytes = Some(1)))
+      .unwrap()
+      .unwrap();
+    assert_eq!((result.width, result.height), (1, 1));
+    assert_eq!(result.buffer.len(), 3 * 4);
+  }
+
+  #[test]
+  fn max_bytes_static_image() {
+    let data = make_png(64, 32);
+    let result = decode_frames(&data, &spec_with(|s| s.max_bytes = Some(2000)))
+      .unwrap()
+      .unwrap();
+    assert_eq!((result.width, result.height), (31, 15));
+    assert!(result.buffer.len() <= 2000);
+    assert_close(frame_pixel(&result, 0), colour(1));
+  }
+
+  fn animated_only() -> DecodeFramesSpec {
+    spec_with(|s| s.animated_only = true)
+  }
+
+  #[test]
+  fn animated_only_skips_static_images() {
+    assert!(
+      decode_frames(&make_png(8, 4), &animated_only())
+        .unwrap()
+        .is_none()
+    );
+
+    let mut webp = Vec::new();
+    WebPEncoder::new_lossless(&mut webp)
+      .write_image(
+        solid(8, 4, 2).as_raw(),
+        8,
+        4,
+        image::ExtendedColorType::Rgba8,
+      )
+      .unwrap();
+    assert!(decode_frames(&webp, &animated_only()).unwrap().is_none());
+
+    let mut jpeg = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new(&mut jpeg)
+      .write_image(&[128u8; 8 * 4 * 3], 8, 4, image::ExtendedColorType::Rgb8)
+      .unwrap();
+    assert!(decode_frames(&jpeg, &animated_only()).unwrap().is_none());
+    assert!(decode_frames(&jpeg, &spec(None)).unwrap().is_some());
+
+    assert!(
+      decode_frames(&make_gif(&[100]), &animated_only())
+        .unwrap()
+        .is_none()
+    );
+  }
+
+  #[test]
+  fn animated_only_needs_two_sampled_frames() {
+    // The second frame falls between ticks
+    let data = make_gif(&[30, 30]);
+    assert!(decode_frames(&data, &animated_only()).unwrap().is_none());
+    assert_eq!(
+      decode_frames(&data, &spec(Some(100)))
+        .unwrap()
+        .unwrap()
+        .frame_start_ms
+        .len(),
+      1
+    );
+  }
+
+  #[test]
+  fn animated_only_keeps_animations() {
+    for data in [
+      make_gif(&[100, 200, 100]),
+      make_apng(&[100, 200, 100]),
+      make_animated_webp(&[100, 200, 100]),
+    ] {
+      assert_three_frames(&decode_frames(&data, &animated_only()).unwrap().unwrap());
+    }
+  }
+
+  #[test]
+  fn animated_only_does_not_decode_static_pixels() {
+    // Cut off partway through the image data, so decoding the pixels would fail
+    let data = make_png(256, 256);
+    let data = &data[..data.len() / 2];
+    assert!(decode_frames(data, &spec(None)).is_err());
+    assert!(decode_frames(data, &animated_only()).unwrap().is_none());
   }
 }
