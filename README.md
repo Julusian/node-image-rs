@@ -304,6 +304,50 @@ const dataUrl = await transformer.toDataUrl("png");
 
 ---
 
+### Animated images
+
+#### `decodeFrames(input, options?)`
+
+Decodes every frame of an animated GIF, APNG or WebP. Any other image is decoded as a single frame.
+
+```ts
+import { decodeFrames } from "@julusian/image-rs";
+
+// Every frame, with its own timing
+const all = await decodeFrames(fs.readFileSync("animation.gif"));
+
+// Resampled to one frame per 100ms, scaled to fit 72x72, and cut off at 30s
+const sampled = await decodeFrames(dataUrl, {
+  maxWidth: 72,
+  maxHeight: 72,
+  sampleIntervalMs: 100,
+  maxDurationMs: 30_000,
+});
+
+const frameSize = sampled.width * sampled.height * 4;
+const firstFrame = sampled.buffer.subarray(0, frameSize);
+```
+
+**Parameters:**
+
+- `input: Uint8Array | string` — The encoded image, or a base64 data URL
+- `options?: DecodeFramesOptions`
+  - `maxWidth?: number` / `maxHeight?: number` — Downscale each frame to fit within these limits, preserving the aspect ratio. Images are never upscaled
+  - `sampleIntervalMs?: number` — Resample the animation onto a fixed grid of this many ms. Each tick shows whichever frame is on screen at that moment, so a fast animation drops frames but keeps its real speed, and slow frames are held for several ticks. Frames which are dropped are never kept or scaled. When omitted, every frame is kept
+  - `maxDurationMs?: number` — Stop decoding once the animation reaches this length
+
+Like browsers, frame delays of 10ms or less are treated as 100ms.
+
+**Returns:** `Promise<DecodedFrames>`
+
+- `width` / `height` — Size of every frame
+- `frameCount` — Number of frames
+- `frameStartMs` — When each frame starts being shown, in ms. When sampling, these are multiples of `sampleIntervalMs`
+- `durationMs` — Length of one loop of the animation, in ms. `0` for a static image
+- `buffer` — Every frame as `rgba` pixels, one after another
+
+---
+
 ### Types
 
 #### `PixelFormat`

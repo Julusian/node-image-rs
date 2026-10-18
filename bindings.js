@@ -266,10 +266,17 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`);
 }
 
-const { ImageTransformer, ImageFormat, PixelFormat, ResizeMode, RotationMode } =
-  nativeBinding;
+const {
+  ImageTransformer,
+  ImageFormat,
+  PixelFormat,
+  ResizeMode,
+  RotationMode,
+  decodeFrames,
+} = nativeBinding;
 export { ImageTransformer };
 export { ImageFormat };
 export { PixelFormat };
 export { ResizeMode };
 export { RotationMode };
+export { decodeFrames };

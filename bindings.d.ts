@@ -155,6 +155,43 @@ export interface ComputedImage {
   height: number
 }
 
+export interface DecodedFrames {
+  width: number
+  height: number
+  frameCount: number
+  /**
+   * When each frame starts being shown, in ms from the start of the animation.
+   * When sampling, these are all multiples of `sampleIntervalMs`
+   */
+  frameStartMs: Array<number>
+  /** The length of one loop of the animation, in ms. 0 for a static image */
+  durationMs: number
+  /** Every frame as rgba pixels, one after another */
+  buffer: Buffer
+}
+
+/**
+ * Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame
+ *
+ * @param input - The encoded image, or a data URL string (e.g., "data:image/gif;base64,...")
+ * @param options - Optional sampling, scaling and length limits
+ */
+export declare function decodeFrames(input: Uint8Array | string, options?: DecodeFramesOptions | undefined | null): Promise<DecodedFrames>
+
+export interface DecodeFramesOptions {
+  /** Downscale each frame to fit within this width. Images are never upscaled */
+  maxWidth?: number
+  /** Downscale each frame to fit within this height. Images are never upscaled */
+  maxHeight?: number
+  /**
+   * Resample the animation onto a fixed grid of this many ms, showing whichever frame is on screen at each
+   * tick. Frames which never land on a tick are dropped. When omitted, every frame is kept with its own timing
+   */
+  sampleIntervalMs?: number
+  /** Stop decoding once the animation reaches this length */
+  maxDurationMs?: number
+}
+
 export interface EncodingOptions {
   quality?: number
 }

@@ -50,6 +50,9 @@ jobs:
 
       - name: Clippy
         run: cargo clippy
+
+      - name: Cargo test
+        run: cargo test
   build:
     strategy:
       fail-fast: false

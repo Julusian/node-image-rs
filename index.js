@@ -5,3 +5,4 @@ export const ImageFormat = bindings.ImageFormat;
 export const ResizeMode = bindings.ResizeMode;
 export const RotationMode = bindings.RotationMode;
 export const ImageTransformer = bindings.ImageTransformer;
+export const decodeFrames = bindings.decodeFrames;

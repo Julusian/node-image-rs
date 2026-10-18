@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+mod frames;
 mod image_rs_copy;
 
 use std::io::Cursor;
@@ -485,6 +486,46 @@ fn create_data_url(format: ImageFormat, pixels: &Vec<u8>) -> String {
   format!("data:{mime_type};base64,{base64_data}")
 }
 
+// Extract the encoded image from a base64 data URL (e.g., "data:image/png;base64,...")
+fn decode_data_url(data_url: &str) -> napi::Result<Vec<u8>> {
+  // Parse the data URL format: data:[<mediatype>][;base64],<data>
+  if !data_url.starts_with("data:") {
+    return Err(Error::new(
+      Status::GenericFailure,
+      "Invalid data URL format: must start with 'data:'",
+    ));
+  }
+
+  // Find the comma that separates the header from the data
+  let comma_pos = data_url.find(',').ok_or_else(|| {
+    Error::new(
+      Status::GenericFailure,
+      "Invalid data URL format: missing comma separator",
+    )
+  })?;
+
+  let header = &data_url[5..comma_pos]; // Skip "data:" prefix
+  let data_part = &data_url[comma_pos + 1..];
+
+  // Check if it's base64 encoded
+  if !header.contains("base64") {
+    return Err(Error::new(
+      Status::GenericFailure,
+      "Only base64-encoded data URLs are supported",
+    ));
+  }
+
+  // Decode the base64 data
+  let image_data = general_purpose::STANDARD.decode(data_part).map_err(|_e| {
+    Error::new(
+      Status::GenericFailure,
+      "Failed to decode base64 data from data URL",
+    )
+  })?;
+
+  Ok(image_data)
+}
+
 enum TargetFormat {
   PixelBuffer(PixelFormat),
   EncodedImage((ImageFormat, Option<f64>)),
@@ -802,40 +843,7 @@ impl ImageTransformer {
   /// This method parses the data URL, extracts the base64 data, and decodes the image
   #[napi(factory)]
   pub fn from_image_data_url(env: Env, data_url: String) -> napi::Result<Self> {
-    // Parse the data URL format: data:[<mediatype>][;base64],<data>
-    if !data_url.starts_with("data:") {
-      return Err(Error::new(
-        Status::GenericFailure,
-        "Invalid data URL format: must start with 'data:'",
-      ));
-    }
-
-    // Find the comma that separates the header from the data
-    let comma_pos = data_url.find(',').ok_or_else(|| {
-      Error::new(
-        Status::GenericFailure,
-        "Invalid data URL format: missing comma separator",
-      )
-    })?;
-
-    let header = &data_url[5..comma_pos]; // Skip "data:" prefix
-    let data_part = &data_url[comma_pos + 1..];
-
-    // Check if it's base64 encoded
-    if !header.contains("base64") {
-      return Err(Error::new(
-        Status::GenericFailure,
-        "Only base64-encoded data URLs are supported",
-      ));
-    }
-
-    // Decode the base64 data
-    let image_data = general_purpose::STANDARD.decode(data_part).map_err(|_e| {
-      Error::new(
-        Status::GenericFailure,
-        "Failed to decode base64 data from data URL",
-      )
-    })?;
+    let image_data = decode_data_url(&data_url)?;
 
     // Use the existing from_encoded_image logic
     let reader = ImageReader::new(Cursor::new(&image_data))
@@ -1176,4 +1184,97 @@ impl ImageTransformer {
 
     Ok(AsyncTask::new(task))
   }
+}
+
+#[napi(object)]
+pub struct DecodeFramesOptions {
+  /// Downscale each frame to fit within this width. Images are never upscaled
+  pub max_width: Option<u32>,
+  /// Downscale each frame to fit within this height. Images are never upscaled
+  pub max_height: Option<u32>,
+  /// Resample the animation onto a fixed grid of this many ms, showing whichever frame is on screen at each
+  /// tick. Frames which never land on a tick are dropped. When omitted, every frame is kept with its own timing
+  pub sample_interval_ms: Option<u32>,
+  /// Stop decoding once the animation reaches this length
+  pub max_duration_ms: Option<u32>,
+}
+
+#[napi(object)]
+pub struct DecodedFrames {
+  pub width: u32,
+  pub height: u32,
+  pub frame_count: u32,
+  /// When each frame starts being shown, in ms from the start of the animation.
+  /// When sampling, these are all multiples of `sampleIntervalMs`
+  pub frame_start_ms: Vec<u32>,
+  /// The length of one loop of the animation, in ms. 0 for a static image
+  pub duration_ms: u32,
+  /// Every frame as rgba pixels, one after another
+  pub buffer: Buffer,
+}
+
+pub struct AsyncDecodeFrames {
+  input: Either<Vec<u8>, String>,
+  spec: frames::DecodeFramesSpec,
+}
+
+impl napi::Task for AsyncDecodeFrames {
+  type Output = frames::DecodedFramesData;
+  type JsValue = DecodedFrames;
+
+  fn compute(&mut self) -> napi::Result<Self::Output> {
+    let decoded_url;
+    let data = match &self.input {
+      Either::A(buffer) => buffer.as_slice(),
+      Either::B(data_url) => {
+        decoded_url = decode_data_url(data_url)?;
+        decoded_url.as_slice()
+      }
+    };
+
+    frames::decode_frames(data, &self.spec).map_err(|e| Error::new(Status::GenericFailure, e))
+  }
+
+  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> napi::Result<Self::JsValue> {
+    Ok(DecodedFrames {
+      width: output.width,
+      height: output.height,
+      frame_count: output.frame_start_ms.len() as u32,
+      frame_start_ms: output.frame_start_ms,
+      duration_ms: output.duration_ms,
+      buffer: output.buffer.into(),
+    })
+  }
+}
+
+/// Asynchronously decode every frame of an animated GIF, APNG or WebP. Other images are decoded as a single frame
+///
+/// @param input - The encoded image, or a data URL string (e.g., "data:image/gif;base64,...")
+/// @param options - Optional sampling, scaling and length limits
+#[napi(ts_return_type = "Promise<DecodedFrames>")]
+pub fn decode_frames(
+  input: Either<Uint8Array, String>,
+  options: Option<DecodeFramesOptions>,
+) -> napi::Result<AsyncTask<AsyncDecodeFrames>> {
+  let input = match input {
+    Either::A(buffer) => Either::A(buffer.to_vec()),
+    Either::B(data_url) => Either::B(data_url),
+  };
+
+  let spec = match options {
+    Some(opts) => frames::DecodeFramesSpec {
+      max_width: opts.max_width,
+      max_height: opts.max_height,
+      sample_interval_ms: opts.sample_interval_ms,
+      max_duration_ms: opts.max_duration_ms,
+    },
+    None => frames::DecodeFramesSpec {
+      max_width: None,
+      max_height: None,
+      sample_interval_ms: None,
+      max_duration_ms: None,
+    },
+  };
+
+  Ok(AsyncTask::new(AsyncDecodeFrames { input, spec }))
 }

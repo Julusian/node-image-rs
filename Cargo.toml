@@ -10,8 +10,11 @@ crate-type = ["cdylib"]
 # Enable napi feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
 napi = { version = "3.9.4", default-features = false, features = ["napi8"] }
 napi-derive = "3.5.7"
-image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
+image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 base64 = "0.23"
+
+[dev-dependencies]
+png = "0.18"
 
 [build-dependencies]
 napi-build = "2.3.2"
